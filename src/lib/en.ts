@@ -855,4 +855,7 @@ export const EN: Record<string, string> = {
   'Die Dachneigung liegt unter der Regeldachneigung dieses Modells. Zusatzmaßnahmen nach Herstellerangaben nötig.': 'The pitch is below the standard minimum pitch of this model. Additional measures as specified by the manufacturer are required.',
   'Abstand Traufe': 'Eaves distance',
   'LAF': 'LAF',
+  'Kraft': 'Force',
+  'beanspruchter Rand unten, Hirnholzende links': 'loaded edge at the bottom, end grain on the left',
+  'Faserrichtung ↔': 'grain direction ↔',
 }

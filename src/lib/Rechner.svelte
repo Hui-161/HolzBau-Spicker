@@ -214,7 +214,7 @@
       <button type="submit">{t('Fertig')}</button>
     </form>
   {/if}
-  {#if z.masse?.length}<p class="legende">{t('Maße in')} {zustand.einheit}{#if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
+  {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
 {/snippet}
 
 {#if rechner.skizze}

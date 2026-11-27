@@ -77,6 +77,8 @@ export interface Zeichnung {
   /** SVG-Inhalt, nutzt currentColor */
   inhalt: string
   masse?: Mass[]
+  /** feste Einheit der Maße, wenn sie nicht in der gewählten Längeneinheit stehen (z. B. mm) */
+  einheit?: string
 }
 
 export interface Ergebnis {

@@ -58,6 +58,7 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Firmenlogo im Briefkopf der Dokumente
 - Wochenübersicht der Stundenzettel
 - Wirksame Anzahl der Verbindungsmittel und weitere Bemessungshilfen – bewusst zurückgestellt, das ist Statik
+- Abstände Verbindungsmittel mit maßstäblicher Detailzeichnung (vier Verbindungsmittel am Holzende, Kraftrichtung, alle Mindestabstände in mm)
 
 ## KI-Assistent (freiwillig)
 

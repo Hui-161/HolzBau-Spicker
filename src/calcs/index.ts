@@ -4,7 +4,7 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -1075,6 +1075,7 @@ export const RECHNER: Rechner[] = [
       const r = w.a === 'bolzen' || w.a === 'stabduebel' ? mindestabstaendeStift(zahl(w, 'd'), zahl(w, 'w'), w.a) : mindestabstaende(zahl(w, 'd'), zahl(w, 'w'), w.v as Vorbohrung)
       const mm = (label: string, wert: number): Ausgabe => ({ label, wert, art: 'num', einheit: 'mm', stellen: 0 })
       return {
+        zeichnung: zeichneAbstaende(zahl(w, 'd'), zahl(w, 'w'), r),
         ausgaben: [
           mm('a1 – untereinander in Faserrichtung', Math.ceil(r.a1 - 1e-9)),
           mm('a2 – untereinander quer zur Faser', Math.ceil(r.a2 - 1e-9)),

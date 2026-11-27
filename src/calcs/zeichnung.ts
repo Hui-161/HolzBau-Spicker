@@ -1253,3 +1253,50 @@ export function zeichneLattung(sparrenlaenge: number, positionen: number[]): Zei
   b.kette([[0, -dicke], [sparrenlaenge, -dicke]], { h: b.kante.unten + 66 }, { kurz: true, feld: ['sl'] })
   return b.fertig()
 }
+
+/**
+ * Mindestabstände von vier Verbindungsmitteln am Holzende, Faser waagerecht, Hirnholz links.
+ * Der Kraftpfeil zeigt zum beanspruchten Hirnholzende und zum beanspruchten Rand (unten).
+ * Alle Maße in Millimetern, maßstäblich.
+ */
+export function zeichneAbstaende(d: number, winkelGrad: number, a: { a1: number; a2: number; a3t: number; a4t: number; a4c: number }): Zeichnung | undefined {
+  if (!gueltig(d, winkelGrad, a.a1, a.a2, a.a3t, a.a4t, a.a4c) || !(d > 0)) return undefined
+  const hoch = a.a4t + a.a2 + a.a4c
+  const frei = Math.max(a.a1 * 1.4, hoch * 0.8)
+  const lang = a.a3t + a.a1 + frei
+  // Bruchkante rechts: das Holz läuft weiter
+  const zack = hoch * 0.06
+  const holz: Punkt[] = [[0, 0], [lang, 0], [lang - zack, hoch * 0.3], [lang + zack, hoch * 0.5], [lang - zack, hoch * 0.7], [lang, hoch], [0, hoch]]
+  const b = blatt([[0, 0], [lang + zack, hoch]], { l: 62, r: 14, o: 26, u: 56 })
+  b.zug(holz, FLAECHE, true)
+  // Faserrichtung als feine Linien
+  for (const y of [0.18, 0.36, 0.64, 0.82]) b.zug([[lang * 0.03, hoch * y], [lang * 0.97, hoch * y]], 'fill="none" stroke="#111" stroke-width="0.2" stroke-opacity="0.45"')
+  const stifte: Punkt[] = [[a.a3t, a.a4t], [a.a3t + a.a1, a.a4t], [a.a3t, a.a4t + a.a2], [a.a3t + a.a1, a.a4t + a.a2]]
+  const proMm = b.px([1, 0])[0] - b.px([0, 0])[0]
+  for (const p of stifte) {
+    const [x, y] = b.px(p)
+    b.roh(`<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(Math.max(1.6, (d / 2) * proMm))}" fill="#fff" stroke="#111" stroke-width="0.8"/><path ${MASS} d="M${f1(x - 4)},${f1(y)} H${f1(x + 4)} M${f1(x)},${f1(y - 4)} V${f1(y + 4)}"/>`)
+  }
+  // Kraft: Pfeil im freien Teil rechts, zeigt zum Hirnholzende und zum unteren Rand
+  const w = (winkelGrad * Math.PI) / 180
+  const pfeil = Math.min(frei * 0.3, hoch * 0.45)
+  const start: Punkt = [a.a3t + a.a1 + frei * 0.92, hoch * 0.5 + (pfeil * Math.sin(w)) / 2]
+  const spitze: Punkt = [start[0] - pfeil * Math.cos(w), start[1] - pfeil * Math.sin(w)]
+  const [[sx, sy], [ex, ey]] = [b.px(start), b.px(spitze)]
+  const [ux, uy] = [(ex - sx) / (Math.hypot(ex - sx, ey - sy) || 1), (ey - sy) / (Math.hypot(ex - sx, ey - sy) || 1)]
+  b.roh(`<path fill="none" stroke="#000" stroke-width="1.2" stroke-linejoin="round" d="M${f1(sx)},${f1(sy)} L${f1(ex)},${f1(ey)} M${f1(ex - ux * 6 + uy * 3)},${f1(ey - uy * 6 - ux * 3)} L${f1(ex)},${f1(ey)} L${f1(ex - ux * 6 - uy * 3)},${f1(ey - uy * 6 + ux * 3)}"/>`)
+  b.mass({ x: sx, y: Math.min(sy, ey) - 8, wert: 0, art: 'len', text: 'Kraft', klein: true, anker: 'end' })
+  // unten: Hirnholzabstand und Abstand in Faserrichtung; links: Randabstände und Abstand quer zur Faser
+  const rund = (x: number): number => Math.ceil(x - 1e-9)
+  b.kette([[0, 0], [a.a3t, 0], [a.a3t + a.a1, 0]], { h: b.kante.unten + KETTE_1 }, { werte: [rund(a.a3t), rund(a.a1)], vor: ['a3,t = ', 'a1 = '] })
+  b.kette([[0, 0], [0, a.a4t]], { v: b.kante.links - KETTE_1 }, { werte: [rund(a.a4t)], vor: ['a4,t = '] })
+  b.kette([[0, a.a4t + a.a2], [0, hoch]], { v: b.kante.links - KETTE_1 }, { werte: [rund(a.a4c)], vor: ['a4,c = '] })
+  // Abstand quer zur Faser direkt neben der Gruppe, damit die Randabstände links Platz haben
+  b.kette([stifte[1], stifte[3]], { v: b.px(stifte[1])[0] + Math.max(1.6, (d / 2) * proMm) + 20 }, { werte: [rund(a.a2)], vor: ['a2 = '] })
+  text(b, [lang / 2, 0], 0, 44, 'beanspruchter Rand unten, Hirnholzende links')
+  text(b, [lang / 2, hoch], 0, -10, 'Faserrichtung ↔')
+  const z = b.fertig()
+  // Maße als ganze Millimeter
+  for (const m of z.masse ?? []) if (!m.text) m.art = 'int'
+  return { ...z, einheit: 'mm' }
+}
