@@ -26,7 +26,6 @@ export const STICHWORTE: Record<string, string[]> = {
   treppe: ['Treppenrechner', 'Stufen', 'Stufenhöhe', 'Steigung', 'Auftritt', 'Schrittmaß', 'Schrittmaßregel', 'Treppenwange', 'Geschosshöhe', 'Blockstufe', 'stairs', 'staircase'],
   holz: ['Kubikmeter', 'Festmeter', 'cbm', 'm³', 'Volumen', 'Gewicht', 'Laufmeter', 'lfm', 'Kantholz', 'Balken', 'Rohdichte', 'Holzliste', 'Holzbedarf', 'Bestellung', 'timber', 'lumber'],
   massstab: ['Plan', 'Zeichnung', 'Umrechnung', 'Planmaß', '1:50', '1:100', 'M 1:', 'scale'],
-  stern: ['Weihnachtsstern', 'Stern', 'Adventsstern', 'Deko', 'Zacken', 'Gehrung', 'Gehrungswinkel', 'star'],
   verschnitt: ['Zuschnitt', 'Zuschnittliste', 'Schnittliste', 'Schnittplan', 'Stückliste', 'Optimierung', 'Stangenware', 'Reststück', 'Abschnitt', 'Kappliste', 'Stangenlänge', 'Lagerlänge', 'Verschnittoptimierung', 'Querschnitt', 'Materialliste', 'Holzliste', 'cutting list', 'cut list'],
   abstaende: ['Bolzen', 'Stabdübel', 'Passbolzen', 'Gewindestange', 'Schlüsselschraube', 'Bolzenabstand', 'Mindestholzdicke', 'Vorbohren', 'Spalten', 'Nagelabstand', 'Schraubenabstand', 'Randabstand', 'Mindestabstand', 'Verbindungsmittel', 'Nägel', 'Schrauben', 'Nagelbild', 'Eurocode', 'EC5', 'Hirnholz', 'nail', 'screw'],
   bedenken: ['Bedenken', 'Bedenkenanmeldung', 'Bedenkenhinweis', 'Hinweispflicht', 'Prüfpflicht', 'VOB', 'Mangel', 'Vorleistung', 'Vorgewerk', 'Haftung', 'Haftungsfreistellung', 'Schreiben', 'Brief', 'Formular', 'Vordruck', 'PDF', 'Unterschrift'],

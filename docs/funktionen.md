@@ -21,9 +21,9 @@ Kontrollrechnungen getestet. Texte, Skizzen und Aufbau sind eigene.
 - Einteilung (Außen-/Eck-/Innenmaß) und Sparreneinteilung, jeweils mit Anrissliste
 - Dreiecke: rechtwinklig (zwei beliebige Werte), allgemein (SSS, SWS, WSW, SSW)
 - Maßkontrolle: Diagonalen, 3-4-5-Winkel, Neigungsmesser über den Lagesensor
-- Neigung umrechnen, Dachfläche, Stichbogen, Treppe, Holzmenge mit Gewicht, Maßstab, Holzstern
+- Neigung umrechnen, Dachfläche, Stichbogen, Treppe, Holzmenge mit Gewicht, Maßstab
 - Projekte mit eigenen Eingaben und Notizen, Teilen per Link oder QR-Code, Drucken/PDF
-- Maßstäbliche Zeichnungen mit Maßzahlen zu Sparren, Grat mit Schiftern, Kehlbalken, Einteilung, Dreieck und Stern
+- Maßstäbliche Zeichnungen mit Maßzahlen zu Sparren, Grat mit Schiftern, Kehlbalken, Einteilung und Dreieck
 - Zeichnungen als Plandetails (Haarlinien auf weißem Grund) mit Maßketten; blau gesetzte Eingabemaße lassen sich in der Zeichnung antippen und ändern
 - Grat-/Kehlsparren: Details zu Seitenansicht, Gratfuß mit Verstich, Abgratung, Hexenschnitt, Anfallspunkt mit Backen und Kerve über der Pfettenecke
 - Details auch für Kehlbalken (Anschluss am Sparren, Werkstück), Pultdach (Traufe, beide Auflager, oberes Ende – mit Sparrenhöhe), Zeltdach (Mittel- und Gratsparren, Dachfläche in wahrer Größe), Schleppgaube (Anschnitt auf dem Hauptdach) und Sattel-/Walmgaube (Querschnitt, Längsschnitt, Kehl- und Gratsparren)

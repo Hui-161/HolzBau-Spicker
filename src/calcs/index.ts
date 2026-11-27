@@ -1,10 +1,10 @@
 import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, gratAnfall, gratKerve, sattelgaube, walmgaube, pultdach, schleppgaube, zeltdach, kehlbalken, lattung, schifter, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from '../core/dach'
-import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig, stern } from '../core/dreieck'
+import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from '../core/dreieck'
 import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -1024,32 +1024,6 @@ export const RECHNER: Rechner[] = [
     rechne: (w) => ({
       ausgaben: [L(w.r === 'planZuReal' ? 'Wirkliches Maß' : 'Maß im Plan', massstab(zahl(w, 'x'), zahl(w, 'm'), w.r as 'planZuReal' | 'realZuPlan'), true)],
     }),
-  },
-  {
-    id: 'stern',
-    beispiel: { n: 5, d: 200, w: 36 },
-    titel: 'Holzstern',
-    gruppe: 'Sonstiges',
-    kurz: 'Stablänge und Gehrungen für Sterne',
-    info: 'Die Stablänge ist die Außenkante von Spitze zu Innenecke. Gehrungen sind zur Stabkante gemessen.',
-    felder: [
-      { id: 'n', label: 'Anzahl Zacken', art: 'int', vorgabe: 5 },
-      { id: 'd', label: 'Durchmesser über die Spitzen', art: 'len' },
-      { id: 'w', label: 'Winkel an der Spitze', art: 'ang', vorgabe: 36 },
-    ],
-    rechne: (w) => {
-      const r = stern(zahl(w, 'n'), zahl(w, 'd') / 2, zahl(w, 'w'))
-      return {
-        zeichnung: zeichneStern(zahl(w, 'n'), zahl(w, 'd') / 2, r.innenradius, r.kante),
-        ausgaben: [
-          L('Stablänge (Außenkante)', r.kante, true),
-          { label: 'Anzahl Stäbe', wert: r.kanten, art: 'int', wichtig: true },
-          W('Gehrung an der Spitze', r.gehrungSpitze),
-          W('Gehrung an der Innenecke', r.gehrungInnen),
-          L('Durchmesser Innenecken', 2 * r.innenradius),
-        ],
-      }
-    },
   },
   {
     id: 'verschnitt',

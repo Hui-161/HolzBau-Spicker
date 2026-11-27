@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dachfensterWechsel, dachflaecheSattel, grat, sattelgaube, pultdach, schleppgaube, zeltdach, kehlbalken, schifter, lattung, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from './dach'
-import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig, stern } from './dreieck'
+import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from './dreieck'
 import { einteilung, sparrenEinteilung, stabAnzahl } from './einteilung'
 import { neigungAusSchwerkraft } from './sensor'
 import { holzmenge, leseLaengen, leseTeile, massstab, treppe, verschnitt } from './sonstiges'
@@ -192,7 +192,7 @@ describe('Sonstiges', () => {
   })
 })
 
-describe('Hexenschnitt, Schifter, Kehlbalken, Stern', () => {
+describe('Hexenschnitt, Schifter, Kehlbalken', () => {
   const rad = (g: number) => (g * Math.PI) / 180
   const kreuz = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
   const winkel = (a: number[], b: number[]) => (Math.acos(Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b))) * 180) / Math.PI
@@ -232,14 +232,6 @@ describe('Hexenschnitt, Schifter, Kehlbalken, Stern', () => {
     nah(r.restBisFirst, 134)
     nah(r.rissSparren, 250 * Math.SQRT2)
     expect(() => kehlbalken({ weite: 800, neigung: 45, hoeheUnten: 390, balkenhoehe: 16 })).toThrow()
-  })
-  it('Stern: fünf Zacken mit 36° ist das Pentagramm', () => {
-    const r = stern(5, 100, 36)
-    // Pentagramm: Innenradius = R / φ²
-    const phi = (1 + Math.sqrt(5)) / 2
-    nah(r.innenradius, 100 / phi ** 2)
-    expect(r.kanten).toBe(10)
-    expect(() => stern(5, 100, 120)).toThrow()
   })
 })
 

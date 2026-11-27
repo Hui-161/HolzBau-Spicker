@@ -589,30 +589,6 @@ export function zeichneEinteilung(breite: number, staerke: number, kanten: numbe
   return b.fertig()
 }
 
-export function zeichneStern(zacken: number, aussen: number, innen: number, kante: number): Zeichnung | undefined {
-  if (!gueltig(zacken, aussen, innen, kante)) return undefined
-  const punkte: Punkt[] = []
-  for (let i = 0; i < 2 * zacken; i++) {
-    const r = i % 2 === 0 ? aussen : innen
-    const w = Math.PI / 2 + (i * Math.PI) / zacken
-    punkte.push([r * Math.cos(w), r * Math.sin(w)])
-  }
-  const b = blatt(
-    [
-      [-aussen, -aussen],
-      [aussen, aussen],
-    ],
-    { l: 30, r: 30, o: 22, u: 30 }
-  )
-  const [mx, my] = b.px([0, 0])
-  b.roh(`<circle cx="${f1(mx)}" cy="${f1(my)}" r="${f1(b.px([aussen, 0])[0] - mx)}" ${HILF}/>`)
-  b.zug(punkte, FLAECHE, true)
-  b.kette([[-aussen, -aussen], [aussen, -aussen]], { h: b.kante.unten + KETTE_1 }, { werte: [2 * aussen], vor: ['Ø '], feld: ['d'] })
-  // Stablänge an der ersten Kante links der oberen Spitze, außen
-  b.kette([punkte[1], punkte[0]], { p: 12 }, { werte: [kante] })
-  return b.fertig()
-}
-
 /** Dreieck mit c als Grundseite, α links, β rechts. */
 export interface DreieckWahl {
   /** Feldkennungen der sechs Größen; damit werden sie in der Zeichnung antippbar */

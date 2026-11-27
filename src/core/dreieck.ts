@@ -182,23 +182,3 @@ export function bogen(sehne: number, stich: number) {
   return { radius, winkel, bogenlaenge: (radius * winkel * Math.PI) / 180 }
 }
 
-/** Stern mit n Zacken: Außenradius und Winkel an der Spitze. */
-export function stern(zacken: number, aussenradius: number, spitzenwinkel: number) {
-  pruefe(Number.isInteger(zacken) && zacken >= 3 && zacken <= 24, 'Anzahl der Zacken: 3 bis 24.')
-  pruefe(aussenradius > 0, 'Radius muss größer als 0 sein.')
-  const halb = spitzenwinkel / 2
-  const mitte = 180 / zacken
-  // Dreieck Mitte – Spitze – Innenecke
-  const innenwinkel = 180 - mitte - halb
-  pruefe(halb > 0 && innenwinkel > 90, 'Der Winkel an der Spitze ist für diese Zackenzahl zu groß.')
-  return {
-    innenradius: (aussenradius * sin(halb)) / sin(innenwinkel),
-    kante: (aussenradius * sin(mitte)) / sin(innenwinkel),
-    kanten: 2 * zacken,
-    /** Gehrung an der Spitze, zur Stabkante gemessen */
-    gehrungSpitze: halb,
-    /** Gehrung an der Innenecke, zur Stabkante gemessen */
-    gehrungInnen: 180 - innenwinkel,
-    durchmesser: 2 * aussenradius,
-  }
-}

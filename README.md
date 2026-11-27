@@ -8,7 +8,7 @@ Nach dem ersten Aufruf läuft alles offline, die Eingaben bleiben auf dem Gerät
 - **Dach:** Sparren (Länge, Kerve, Obholz), Grat- und Kehlsparren mit Hexenschnitt und Schifterliste, Kehlbalken/Zange, Pultdach, Zelt- und Turmdach, Schleppgaube, Sattel- und Walmgaube, Wechsel am Dachfenster, Lattung/Ziegel, Dachfläche Satteldach, Neigung umrechnen
 - **Einteilung:** Stäbe/Latten/Pfosten (Außen-, Eck-, Innenmaß), Sparreneinteilung mit Anrissliste
 - **Winkel & Maßkontrolle:** Diagonalkontrolle, 3-4-5-Winkel, rechtwinkliges und allgemeines Dreieck, Stichbogen, Neigungsmesser (Lagesensor)
-- **Sonstiges:** Treppe (Schrittmaß), Holzmenge, Maßstab, Holzstern, Zuschnitt und Verschnitt, Mindestabstände für Nägel, Schrauben, Bolzen und Stabdübel
+- **Sonstiges:** Treppe (Schrittmaß), Holzmenge, Maßstab, Zuschnitt und Verschnitt, Mindestabstände für Nägel, Schrauben, Bolzen und Stabdübel
 - **Projekte & Notizen:** Eingaben je Projekt, Notizen, Teilen per Link oder QR-Code, Ergebnisübersicht, Projektbericht als PDF, Datensicherung
 - **Dokumente:** Behinderungsanzeige, Bedenkenanzeige, Stundenzettel, Aufmaßblatt, Abnahmeprotokoll und Bautagesbericht mit Unterschrift, Fotos und PDF-Export; Absender und Projektangaben werden vorbelegt (deutsche Vorlage, ersetzt keine Rechtsberatung)
 - **Sprachen:** Deutsch und Englisch

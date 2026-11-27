@@ -9,7 +9,7 @@ const leer = (id: string, roh: Record<string, string> = {}): Werte => werteAus(r
 describe('Eingabezeichnung aus Beispielwerten', () => {
   it('jeder Rechner mit Beispielwerten zeichnet schon ohne Eingaben, aber ohne Beispielzahlen', () => {
     const mit = RECHNER.filter((r) => r.beispiel)
-    expect(mit.length).toBeGreaterThanOrEqual(13)
+    expect(mit.length).toBeGreaterThanOrEqual(12)
     for (const r of mit) {
       const z = vorschauAus(r, leer(r.id), 1)
       expect(z, r.id).toBeDefined()

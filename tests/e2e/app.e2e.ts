@@ -20,7 +20,6 @@ const BEISPIELE: Record<string, string[]> = {
   treppe: ['280'],
   holz: ['8', '16', '5', '10', '470'],
   massstab: ['2.5', '50'],
-  stern: ['5', '200', '36'],
   abstaende: ['4', '0'],
 }
 
