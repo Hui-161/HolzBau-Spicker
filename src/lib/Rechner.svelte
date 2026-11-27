@@ -230,7 +230,7 @@
     max-width: 34rem;
     margin: 0.75rem auto 0.25rem;
     background: #fff;
-    border: 1px solid var(--linie, #bbb);
+    border: 1px solid var(--rand);
     border-radius: 3px;
   }
   .mass {
@@ -273,6 +273,21 @@
   }
   .massfeld label {
     flex: 1;
+    min-width: 0;
+  }
+  .massfeld input {
+    min-width: 0;
+  }
+  .massfeld button {
+    flex: none;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border: 1px solid var(--akzent);
+    border-radius: 0.6rem;
+    background: var(--akzent);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
   }
   .legende {
     margin: 0 0 0.5rem;
