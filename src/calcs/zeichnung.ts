@@ -1221,3 +1221,35 @@ export function zeichneGaubeLaengs(neigungHaupt: number, hoeheTraufe: number, fi
   b.anPunkt([first * 0.72, 0], neigungHaupt, 0, -8, { art: 'ang', feld: 'ah' })
   return b.fertig()
 }
+
+/**
+ * Lattung auf dem Sparren, in die Waagerechte gedreht: Traufkante links, First rechts.
+ * Jede Latte liegt mit ihrer Oberkante am angegebenen Maß. Darunter die fortlaufenden Maße
+ * ab Traufkante zum Antragen mit dem Bandmaß.
+ */
+export function zeichneLattung(sparrenlaenge: number, positionen: number[]): Zeichnung | undefined {
+  if (!gueltig(sparrenlaenge, ...positionen) || positionen.length < 2 || positionen.length > 120 || !(sparrenlaenge > 0)) return undefined
+  const weite = positionen[1] - positionen[0]
+  // Lattenquerschnitt nur angedeutet
+  const [lb, lh] = [Math.min(weite * 0.16, sparrenlaenge * 0.012 + weite * 0.05), weite * 0.1]
+  const dicke = sparrenlaenge * 0.03
+  const b = blatt([[0, -dicke], [sparrenlaenge, lh]], { l: 26, r: 26, o: 54, u: 80 })
+  b.zug([[0, 0], [sparrenlaenge, 0], [sparrenlaenge, -dicke], [0, -dicke]], FLAECHE, true)
+  for (const p of positionen) b.zug([[p - lb, 0], [p, 0], [p, lh], [p - lb, lh]], 'fill="#111" stroke="#111" stroke-width="0.4"', true)
+  const letzte = positionen[positionen.length - 1]
+  // oben: Abstand an der Traufe, Lattweite am ersten Feld (wenn dafür Platz ist), Abstand am First
+  const platz = b.px([positionen[1], 0])[0] - b.px([positionen[0], 0])[0]
+  if (platz > 26) b.kette([[0, lh], [positionen[0], lh], [positionen[1], lh]], { h: b.kante.oben - KETTE_1 }, { feld: ['t'] })
+  else {
+    b.kette([[0, lh], [positionen[0], lh]], { h: b.kante.oben - KETTE_1 }, { feld: ['t'] })
+    // Felder zu eng für eine Maßkette: die Lattweite steht als Angabe in der Mitte
+    const [mx, my] = b.px([sparrenlaenge / 2, lh])
+    b.mass({ x: mx, y: my - 14, wert: weite, art: 'len', name: 'Lattweite' })
+  }
+  if (sparrenlaenge - letzte > 1e-9) b.kette([[letzte, lh], [sparrenlaenge, lh]], { h: b.kante.oben - KETTE_1 }, { feld: ['f'] })
+  text(b, [0, lh], 0, -42, 'Traufe', { anker: 'start' })
+  text(b, [sparrenlaenge, lh], 0, -42, 'First', { anker: 'end' })
+  b.laufkette([[0, -dicke], ...positionen.map((p): Punkt => [p, -dicke])], b.kante.unten + 12, [0, ...positionen])
+  b.kette([[0, -dicke], [sparrenlaenge, -dicke]], { h: b.kante.unten + 66 }, { kurz: true, feld: ['sl'] })
+  return b.fertig()
+}

@@ -4,8 +4,8 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
-import { alleZiegel } from './ziegel'
+import { zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
@@ -311,6 +311,14 @@ export const RECHNER: Rechner[] = [
     titel: 'Lattung / Ziegel',
     gruppe: 'Dach',
     kurz: 'Lattweite und Reihen aus der Decklänge',
+    // Sparren mit Latten: Abstand an der Traufe, gleiche Lattweiten, Abstand am First
+    skizze:
+      `<path ${S} d="M22 104 L218 38"/>` +
+      [0.09, 0.26, 0.43, 0.6, 0.77, 0.93].map((u) => `<rect fill="currentColor" stroke="none" x="${(22 + 196 * u - 7).toFixed(1)}" y="${(104 - 66 * u - 6).toFixed(1)}" width="7" height="6" transform="rotate(-18.6 ${(22 + 196 * u).toFixed(1)} ${(104 - 66 * u).toFixed(1)})"/>`).join('') +
+      `<path ${D} d="M103.5 61 L136.8 49.8"/>` +
+      `<text ${T} text-anchor="middle" x="118" y="45" transform="rotate(-18.6 118 45)">Lattweite</text>` +
+      `<text ${T} x="8" y="118">Traufe</text><text ${T} text-anchor="end" x="232" y="28">First</text>` +
+      `<text ${T} x="50" y="112">Abstand Traufe</text><text ${T} text-anchor="end" x="234" y="62">LAF</text>`,
     info: 'Die Decklängen und der Lattenabstand zum First (LAF) stehen im Datenblatt des Ziegels. Die Auswahl „Ziegel / Dachstein“ trägt die Decklängen einiger verbreiteter Modelle ein; es sind Richtwerte aus Herstellerunterlagen, die sich ändern können – maßgebend sind das aktuelle Datenblatt und die ausgemittelte Decklänge der gelieferten Ware. Trauf- und Firstabstand gehören nicht dazu und sind selbst einzutragen. Positionen sind ab Traufkante bis Oberkante Latte gemessen.',
     felder: [
       {
@@ -328,22 +336,35 @@ export const RECHNER: Rechner[] = [
           return Object.fromEntries(alleZiegel().map((z) => [z.id, { min: z.min, max: z.max }]))
         },
       },
+      { id: 'dn', label: 'Dachneigung', art: 'ang', optional: true, hinweis: 'bei manchen Modellen hängt die größte Decklänge von der Neigung ab' },
       { id: 'sl', label: 'Sparrenlänge', art: 'len', hinweis: 'Traufkante bis Firstpunkt, auf der Konterlatte gemessen' },
       { id: 't', label: 'Traufkante bis OK erste Latte', art: 'len' },
       { id: 'f', label: 'OK letzte Latte bis First (LAF)', art: 'len', vorgabe: 0 },
       { id: 'min', label: 'Decklänge min.', art: 'len' },
       { id: 'max', label: 'Decklänge max.', art: 'len' },
     ],
-    rechne: (w) => {
-      const r = lattung({ sparrenlaenge: zahl(w, 'sl'), traufe: zahl(w, 't'), first: zahl(w, 'f'), deckMin: zahl(w, 'min'), deckMax: zahl(w, 'max') })
+    rechne: (w, k) => {
+      // gewähltes Modell: bei flacher Neigung kann eine kleinere größte Decklänge gelten
+      const ziegel = alleZiegel().find((z) => z.id === w.z)
+      const dn = opt(w, 'dn')
+      const grenze = ziegel && dn !== undefined ? maxBeiNeigung(ziegel, dn) * k.jeCm : undefined
+      const begrenzt = grenze !== undefined && grenze < zahl(w, 'max') - 1e-9
+      const deckMax = begrenzt ? (grenze as number) : zahl(w, 'max')
+      const r = lattung({ sparrenlaenge: zahl(w, 'sl'), traufe: zahl(w, 't'), first: zahl(w, 'f'), deckMin: zahl(w, 'min'), deckMax })
       return {
+        zeichnung: zeichneLattung(zahl(w, 'sl'), r.positionen),
         ausgaben: [
           L('Lattweite', r.lattweite, true),
+          ...(begrenzt ? [L('Größte Decklänge bei dieser Dachneigung', deckMax)] : []),
           { label: 'Ziegelreihen (= Lattenreihen)', wert: r.latten, art: 'int', wichtig: true },
           { label: 'Lattabstände', wert: r.reihen, art: 'int' },
           L('Einzuteilende Strecke', r.strecke),
         ],
-        hinweise: r.passt ? [] : ['Die Lattweite liegt unter der min. Decklänge. Trauf- oder Firstabstand anpassen.'],
+        hinweise: [
+          ...(r.passt ? [] : ['Die Lattweite liegt unter der min. Decklänge. Trauf- oder Firstabstand anpassen.']),
+          ...(begrenzt ? ['Für dieses Modell gilt bei dieser Dachneigung eine kleinere größte Decklänge. Damit wurde gerechnet.'] : []),
+          ...(ziegel?.regel !== undefined && dn !== undefined && dn < ziegel.regel ? ['Die Dachneigung liegt unter der Regeldachneigung dieses Modells. Zusatzmaßnahmen nach Herstellerangaben nötig.'] : []),
+        ],
         liste: {
           titel: 'Lattenpositionen ab Traufkante',
           kopf: ['Latte', 'Oberkante'],

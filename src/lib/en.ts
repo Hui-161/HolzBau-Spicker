@@ -849,4 +849,10 @@ export const EN: Record<string, string> = {
   'Bitte ein PDF oder ein Foto (JPEG, PNG, WebP) wählen.': 'Please choose a PDF or a photo (JPEG, PNG, WebP).',
   'Die Datei ist größer als 20 MB.': 'The file is larger than 20 MB.',
   'In der Datei wurde keine eindeutige Decklänge gefunden.': 'No clear cover length was found in the file.',
+  'bei manchen Modellen hängt die größte Decklänge von der Neigung ab': 'for some models the largest cover length depends on the pitch',
+  'Größte Decklänge bei dieser Dachneigung': 'Largest cover length at this pitch',
+  'Für dieses Modell gilt bei dieser Dachneigung eine kleinere größte Decklänge. Damit wurde gerechnet.': 'For this model a smaller largest cover length applies at this pitch. It was used for the calculation.',
+  'Die Dachneigung liegt unter der Regeldachneigung dieses Modells. Zusatzmaßnahmen nach Herstellerangaben nötig.': 'The pitch is below the standard minimum pitch of this model. Additional measures as specified by the manufacturer are required.',
+  'Abstand Traufe': 'Eaves distance',
+  'LAF': 'LAF',
 }
