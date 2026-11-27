@@ -18,6 +18,10 @@ export interface Feld {
   optionen?: { wert: string; label: string }[]
   optional?: boolean
   hinweis?: string
+  /** Auswahlfeld belegt andere Felder vor: je Auswahlwert die Feldkennungen mit Längen in cm */
+  setzt?: Record<string, Record<string, number>>
+  /** Produktnamen und ähnliche Auswahltexte, die nicht übersetzt werden */
+  roheOptionen?: boolean
   /** Auswahl wird in der Skizze getroffen (Elemente mit data-feld/data-wert), das Auswahlfeld entfällt */
   inSkizze?: boolean
   /** Feld nur anzeigen, wenn die Bedingung erfüllt ist */

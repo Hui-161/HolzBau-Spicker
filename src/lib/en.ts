@@ -173,8 +173,8 @@ export const EN: Record<string, string> = {
   // Lattung
   'Lattung / Ziegel': 'Battens / tiles',
   'Lattweite und Reihen aus der Decklänge': 'Batten gauge and courses from the cover length',
-  'Die Decklängen und der Lattenabstand zum First (LAF) stehen im Datenblatt des Ziegels. Positionen sind ab Traufkante bis Oberkante Latte gemessen.':
-    'Cover lengths and the batten distance to the ridge are given in the tile data sheet. Positions are measured from the eaves edge to the top of each batten.',
+  'Die Decklängen und der Lattenabstand zum First (LAF) stehen im Datenblatt des Ziegels. Die Auswahl „Ziegel / Dachstein“ trägt die Decklängen einiger verbreiteter Modelle ein; es sind Richtwerte aus Herstellerunterlagen, die sich ändern können – maßgebend sind das aktuelle Datenblatt und die ausgemittelte Decklänge der gelieferten Ware. Trauf- und Firstabstand gehören nicht dazu und sind selbst einzutragen. Positionen sind ab Traufkante bis Oberkante Latte gemessen.':
+    'Cover lengths and the batten distance to the ridge are given in the tile data sheet. Positions are measured from the eaves edge to the top of each batten. The “tile” selection fills in the cover lengths of some common models; these are guide values from manufacturer documents and may change – the current data sheet and the averaged cover length of the delivered tiles are decisive. Eaves and ridge distances are not included and must be entered yourself.',
   'Traufkante bis Firstpunkt, auf der Konterlatte gemessen': 'eaves edge to apex, measured on the counter batten',
   'Traufkante bis OK erste Latte': 'Eaves edge to top of first batten',
   'OK letzte Latte bis First (LAF)': 'Top of last batten to ridge',
@@ -795,4 +795,7 @@ export const EN: Record<string, string> = {
   'Maße': 'Dimensions',
   'Liste': 'List',
   'Springen zu': 'Jump to',
+  'Ziegel / Dachstein': 'Roof tile',
+  'eigene Werte': 'own values',
+  'Richtwerte aus Herstellerunterlagen, Stand 11/2026 – Decklänge an der gelieferten Ware ausmitteln': 'Guide values from manufacturer documents, as of 11/2026 – average the cover length on the delivered tiles',
 }

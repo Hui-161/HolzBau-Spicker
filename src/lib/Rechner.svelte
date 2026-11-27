@@ -49,6 +49,18 @@
     sichere()
   }
 
+  /** Auswahl mit Vorbelegung (z. B. Ziegelmodell): trägt die hinterlegten Längen in der gewählten Einheit ein */
+  function belege(f: Feld) {
+    for (const [id, cm] of Object.entries(f.setzt?.[roh[f.id]] ?? {})) {
+      const wert = String(Math.round(cm * JE_CM[zustand.einheit] * 1e4) / 1e4)
+      roh[id] = zustand.sprache === 'de' ? wert.replace('.', ',') : wert
+    }
+  }
+  /** Wird ein vorbelegter Wert von Hand geändert, gilt die Auswahl nicht mehr */
+  function loese(id: string) {
+    for (const f of rechner.felder) if (f.setzt && Object.values(f.setzt).some((s) => id in s) && roh[f.id] !== f.vorgabe) roh[f.id] = String(f.vorgabe ?? '')
+  }
+
   function leere() {
     roh = vorgaben()
     merke()
@@ -59,7 +71,7 @@
   const text = (e: Ergebnis): string =>
     [
       t(rechner.titel),
-      ...sichtbar.filter((f) => (roh[f.id] ?? '') !== '').map((f) => `${t(f.label)}: ${f.art === 'select' ? t(f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '') : `${roh[f.id]} ${einheitVon(f.art, f.einheit)}`}`),
+      ...sichtbar.filter((f) => (roh[f.id] ?? '') !== '').map((f) => `${t(f.label)}: ${f.art === 'select' ? (f.roheOptionen && roh[f.id] !== f.vorgabe ? (f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '') : t(f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '')) : `${roh[f.id]} ${einheitVon(f.art, f.einheit)}`}`),
       '—',
       ...e.ausgaben.map((a) => `${t(a.label)}: ${formatiere(a.wert, a.art, a.stellen)} ${einheitVon(a.art, a.einheit)}`),
       ...listen(e).flatMap((l) => [t(l.titel), ...l.zeilen.map((z) => z.map((c, i) => zelle(c, l.arten[i])).join('\t'))]),
@@ -222,16 +234,16 @@
     <label class:falsch={ungueltig(f)} class:breit={f.art === 'liste'}>
       <span class="name">{t(f.label)}{#if f.optional}<em> · {t('freiwillig')}</em>{/if}</span>
       {#if f.art === 'select'}
-        <select bind:value={roh[f.id]}>
+        <select bind:value={roh[f.id]} onchange={() => belege(f)}>
           {#each f.optionen ?? [] as o (o.wert)}
-            <option value={o.wert}>{t(o.label)}</option>
+            <option value={o.wert}>{f.roheOptionen && o.wert !== f.vorgabe ? o.label : t(o.label)}</option>
           {/each}
         </select>
       {:else if f.art === 'liste'}
         <textarea rows="5" autocomplete="off" spellcheck="false" bind:value={roh[f.id]}></textarea>
       {:else}
         <span class="feld">
-          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="next" bind:value={roh[f.id]} onfocus={(e) => e.currentTarget.select()} />
+          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="next" bind:value={roh[f.id]} oninput={() => loese(f.id)} onfocus={(e) => e.currentTarget.select()} />
           <span class="einheit">{einheitVon(f.art, f.einheit)}</span>
         </span>
       {/if}

@@ -5,6 +5,7 @@ import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
 import { zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { ZIEGEL } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
@@ -310,8 +311,18 @@ export const RECHNER: Rechner[] = [
     titel: 'Lattung / Ziegel',
     gruppe: 'Dach',
     kurz: 'Lattweite und Reihen aus der Decklänge',
-    info: 'Die Decklängen und der Lattenabstand zum First (LAF) stehen im Datenblatt des Ziegels. Positionen sind ab Traufkante bis Oberkante Latte gemessen.',
+    info: 'Die Decklängen und der Lattenabstand zum First (LAF) stehen im Datenblatt des Ziegels. Die Auswahl „Ziegel / Dachstein“ trägt die Decklängen einiger verbreiteter Modelle ein; es sind Richtwerte aus Herstellerunterlagen, die sich ändern können – maßgebend sind das aktuelle Datenblatt und die ausgemittelte Decklänge der gelieferten Ware. Trauf- und Firstabstand gehören nicht dazu und sind selbst einzutragen. Positionen sind ab Traufkante bis Oberkante Latte gemessen.',
     felder: [
+      {
+        id: 'z',
+        label: 'Ziegel / Dachstein',
+        art: 'select',
+        vorgabe: 'eigen',
+        hinweis: 'Richtwerte aus Herstellerunterlagen, Stand 11/2026 – Decklänge an der gelieferten Ware ausmitteln',
+        roheOptionen: true,
+        optionen: [{ wert: 'eigen', label: 'eigene Werte' }, ...ZIEGEL.map((z) => ({ wert: z.id, label: z.name }))],
+        setzt: Object.fromEntries(ZIEGEL.map((z) => [z.id, { min: z.min, max: z.max }])),
+      },
       { id: 'sl', label: 'Sparrenlänge', art: 'len', hinweis: 'Traufkante bis Firstpunkt, auf der Konterlatte gemessen' },
       { id: 't', label: 'Traufkante bis OK erste Latte', art: 'len' },
       { id: 'f', label: 'OK letzte Latte bis First (LAF)', art: 'len', vorgabe: 0 },

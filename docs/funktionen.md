@@ -17,6 +17,7 @@ Kontrollrechnungen getestet. Texte, Skizzen und Aufbau sind eigene.
 - Ergebnisübersicht je Projekt und Projektbericht als PDF mit Eingaben, allen Ergebnissen, Zeichnungen und Listen
 - Zeichnung zum Wechsel am Dachfenster
 - Lattung: Lattweite und Reihen innerhalb der Decklängen, Lattenpositionen
+  - Auswahl einiger verbreiteter Ziegel und Dachsteine, die die Decklängen vorbelegt (`src/calcs/ziegel.ts`, Richtwerte aus Herstellerunterlagen, Stand 11/2026 – bei Modellwechseln nachziehen)
 - Einteilung (Außen-/Eck-/Innenmaß) und Sparreneinteilung, jeweils mit Anrissliste
 - Dreiecke: rechtwinklig (zwei beliebige Werte), allgemein (SSS, SWS, WSW, SSW)
 - Maßkontrolle: Diagonalen, 3-4-5-Winkel, Neigungsmesser über den Lagesensor
