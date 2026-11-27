@@ -71,7 +71,19 @@ export const RECHNER: Rechner[] = [
           { wert: 'kombi', label: 'Senkelschnitt mit Waagschnitt' },
         ],
       },
-      { id: 'ts', label: 'Höhe Senkelschnitt an der Traufe', art: 'len', hinweis: 'lotrecht ab Oberkante, z. B. Höhe des Stirnbretts', wenn: (w) => w.tr === 'kombi' },
+      {
+        id: 'tv',
+        label: 'Vorgabe am Traufabschnitt',
+        art: 'select',
+        vorgabe: 'hoehe',
+        wenn: (w) => w.tr === 'kombi',
+        optionen: [
+          { wert: 'hoehe', label: 'Höhe des Senkelschnitts' },
+          { wert: 'waag', label: 'Länge des Waagschnitts' },
+        ],
+      },
+      { id: 'ts', label: 'Höhe Senkelschnitt an der Traufe', art: 'len', hinweis: 'lotrecht ab Oberkante, z. B. Höhe des Stirnbretts', wenn: (w) => w.tr === 'kombi' && w.tv !== 'waag' },
+      { id: 'tw', label: 'Länge Waagschnitt an der Traufe', art: 'len', hinweis: 'waagerecht, z. B. Breite der Untersichtschalung', wenn: (w) => w.tr === 'kombi' && w.tv === 'waag' },
       { id: 'mp', label: 'Grundmaß bis Mittelpfette', art: 'len', optional: true, hinweis: 'waagerecht ab Außenkante Fußpfette bis zur traufseitigen Kante der Mittelpfette' },
       { id: 'fp', label: 'Breite Firstpfette', art: 'len', optional: true, hinweis: 'leer = ohne Firstpfette' },
     ],
@@ -84,7 +96,8 @@ export const RECHNER: Rechner[] = [
         sparrenhoehe: zahl(w, 'h'),
         kerve: zahl(w, 'k'),
         traufe: profil,
-        stirn: profil === 'kombi' ? zahl(w, 'ts') : undefined,
+        stirn: profil === 'kombi' && w.tv !== 'waag' ? zahl(w, 'ts') : undefined,
+        waagTraufe: profil === 'kombi' && w.tv === 'waag' ? zahl(w, 'tw') : undefined,
         mittelpfette: opt(w, 'mp'),
         firstpfette: opt(w, 'fp'),
       } as const
@@ -105,7 +118,7 @@ export const RECHNER: Rechner[] = [
       return {
         zeichnung: zeichneSparren(eingabe),
         details: [
-          ...(mitUe ? detail(tp === 'senkel' ? 'Detail Traufe: Senkelschnitt' : tp === 'winkel' ? 'Detail Traufe: winkelrechter Abschnitt' : 'Detail Traufe: Senkelschnitt mit Waagschnitt', zeichneTraufe(eingabe.neigung, eingabe.sparrenhoehe, tp, r.traufe.stirn)) : []),
+          ...(mitUe ? detail(tp === 'senkel' ? 'Detail Traufe: Senkelschnitt' : tp === 'winkel' ? 'Detail Traufe: winkelrechter Abschnitt' : 'Detail Traufe: Senkelschnitt mit Waagschnitt', zeichneTraufe(eingabe.neigung, eingabe.sparrenhoehe, tp, r.traufe.stirn, w.tv === 'waag')) : []),
           ...detail('Detail Kerve Fußpfette', zeichneKerve(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, 'Fußpfette', r.anriss.kerveSenkel)),
           ...(r.mittelpfette ? detail('Detail Kerve Mittelpfette', zeichneKerve(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, 'Mittelpfette', r.mittelpfette.senkel)) : []),
           ...detail(r.firstpfette ? 'Detail First mit Firstpfette' : 'Detail First: Senkelschnitt', zeichneFirst(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, eingabe.firstpfette ?? 0, r.anriss.first, r.firstpfette?.senkel)),
@@ -122,7 +135,7 @@ export const RECHNER: Rechner[] = [
           L('Kerve: Auflage waagerecht', r.kervenSattel),
           L('Kerve: Wange lotrecht', r.kervenLot),
           ...(tp === 'winkel' ? [L('Traufe: Unterkante steht waagerecht vor', r.traufe.vorsprung)] : []),
-          ...(tp === 'kombi' ? [L('Traufe: Länge des Waagschnitts', r.traufe.waag)] : []),
+          ...(tp === 'kombi' ? [L('Traufe: Höhe des Senkelschnitts', r.traufe.stirn), L('Traufe: Länge des Waagschnitts', r.traufe.waag)] : []),
           ...(r.mittelpfette ? [L('Mittelpfette: Oberkante über Oberkante Fußpfette', r.mittelpfette.hoehe)] : []),
           ...(r.firstpfette ? [L('Firstpfette: Oberkante über Oberkante Fußpfette', r.firstpfette.hoehe), ...(mitKerve ? [L('Firstpfette: Auflage waagerecht', r.firstpfette.auflage)] : [])] : []),
           W('Anriss: Senkelriss zur Sparrenkante', r.anriss.winkelSenkel, true),

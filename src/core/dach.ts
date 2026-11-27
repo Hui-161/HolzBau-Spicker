@@ -15,6 +15,8 @@ export interface SparrenEingabe {
   traufe?: 'senkel' | 'winkel' | 'kombi'
   /** nur bei „kombi“: Höhe des Senkelschnitts, lotrecht ab Oberkante */
   stirn?: number
+  /** nur bei „kombi“, statt der Höhe: Länge des Waagschnitts (z. B. Breite der Untersichtschalung) */
+  waagTraufe?: number
   /** Mittelpfette: waagerecht von Außenkante Fußpfette bis zur traufseitigen Kante der Mittelpfette */
   mittelpfette?: number
   /** Breite der Firstpfette; sie liegt mittig unter dem First */
@@ -78,7 +80,11 @@ export function sparren(e: SparrenEingabe) {
     anfangUnten = e.sparrenhoehe * t
     traufe = { profil, vorsprung: e.sparrenhoehe * s, stirn: e.sparrenhoehe, waag: 0, waagEnde: 0 }
   } else if (profil === 'kombi') {
-    const stirn = e.stirn ?? NaN
+    if (e.waagTraufe !== undefined) {
+      pruefe(e.waagTraufe > 0, 'Die Länge des Waagschnitts an der Traufe muss größer als 0 sein.')
+      pruefe(e.waagTraufe * t < lot, 'Der Waagschnitt an der Traufe ist länger, als der Sparren hoch ist – dann bleibt kein Senkelschnitt.')
+    }
+    const stirn = e.waagTraufe !== undefined ? lot - e.waagTraufe * t : (e.stirn ?? NaN)
     pruefe(stirn > 0, 'Die Höhe des Senkelschnitts an der Traufe muss größer als 0 sein.')
     pruefe(stirn < lot, 'Der Senkelschnitt an der Traufe ist höher als der Sparren – dann ist es ein reiner Senkelschnitt.')
     const waag = (lot - stirn) / t

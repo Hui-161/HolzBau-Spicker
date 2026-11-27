@@ -342,7 +342,7 @@ export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
 }
 
 /** Traufabschnitt vergrößert. Nullpunkt ist der Traufpunkt an der Oberkante. */
-export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil: 'senkel' | 'winkel' | 'kombi', stirn = 0): Zeichnung | undefined {
+export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil: 'senkel' | 'winkel' | 'kombi', stirn = 0, waagVorgegeben = false): Zeichnung | undefined {
   const rad = (neigungGrad * Math.PI) / 180
   if (!gueltig(rad, sparrenhoehe, stirn) || !(sparrenhoehe > 0)) return undefined
   const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
@@ -369,8 +369,9 @@ export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil:
     b.kette([[0, 0], ecke], { p: -13 }, { werte: [sparrenhoehe], feld: ['h'] })
     b.kette([[0, -lot], [ecke[0], -lot]], { h: b.kante.unten + KETTE_1 }, { kurz: true })
   } else {
-    b.kette([[0, -stirn], [0, 0]], { v: b.kante.links - KETTE_1 }, { feld: ['ts'] })
-    b.kette([[0, -stirn], [waag, -stirn]], { h: b.kante.unten + KETTE_1 })
+    // antippbar ist das Maß, das vorgegeben wurde; das andere ergibt sich
+    b.kette([[0, -stirn], [0, 0]], { v: b.kante.links - KETTE_1 }, { feld: [waagVorgegeben ? undefined : 'ts'] })
+    b.kette([[0, -stirn], [waag, -stirn]], { h: b.kante.unten + KETTE_1 }, { feld: [waagVorgegeben ? 'tw' : undefined] })
   }
   // Sparrenhöhe winkelrecht am Ende des Ausschnitts
   const p: Punkt = [xe * 0.86, xe * 0.86 * t - lot]

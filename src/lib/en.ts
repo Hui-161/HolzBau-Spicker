@@ -739,4 +739,12 @@ export const EN: Record<string, string> = {
   'Mittelpfette': 'Middle purlin',
   'Firstpfette': 'Ridge purlin',
   'ab Traufpunkt': 'from eaves point',
+  'Vorgabe am Traufabschnitt': 'Given at the eaves cut',
+  'Höhe des Senkelschnitts': 'Height of the plumb cut',
+  'Länge des Waagschnitts': 'Length of the level cut',
+  'Länge Waagschnitt an der Traufe': 'Length of level cut at the eaves',
+  'waagerecht, z. B. Breite der Untersichtschalung': 'level, e.g. width of the soffit boarding',
+  'Traufe: Höhe des Senkelschnitts': 'Eaves: height of plumb cut',
+  'Die Länge des Waagschnitts an der Traufe muss größer als 0 sein.': 'The length of the level cut at the eaves must be greater than 0.',
+  'Der Waagschnitt an der Traufe ist länger, als der Sparren hoch ist – dann bleibt kein Senkelschnitt.': 'The level cut at the eaves is longer than the rafter depth allows – no plumb cut would remain.',
 }

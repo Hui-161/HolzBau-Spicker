@@ -327,6 +327,13 @@ describe('Sparren: Pfettenkerven, Traufabschnitt, Holzlänge', () => {
     // hoher Senkelschnitt: die Unterkante beginnt noch vor dem Traufpunkt, um den Rest wird das Holz länger
     const k2 = sparren({ ...e, traufe: 'kombi', stirn: 20 })
     nah(k2.rohlaenge, k2.laengeGesamt + 18 * Math.tan(rad(35)) - k2.traufe.waagEnde)
+    // Waagschnitt vorgeben statt Höhe: dieselbe Geometrie rückwärts
+    const kw = sparren({ ...e, traufe: 'kombi', waagTraufe: k.traufe.waag })
+    nah(kw.traufe.stirn, 12)
+    nah(kw.traufe.waag, k.traufe.waag)
+    nah(kw.traufe.waagEnde, k.traufe.waagEnde)
+    expect(() => sparren({ ...e, traufe: 'kombi', waagTraufe: 40 })).toThrow() // 40·tan35 > Lot
+    expect(() => sparren({ ...e, traufe: 'kombi', waagTraufe: 0 })).toThrow()
     expect(() => sparren({ ...e, traufe: 'kombi', stirn: 30 })).toThrow()
     expect(() => sparren({ ...e, ueberstand: 5, traufe: 'winkel' })).toThrow()
     // ohne Überstand bleibt es beim Senkelschnitt
