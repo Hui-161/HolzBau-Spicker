@@ -4,7 +4,7 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { zeichneFirst, zeichneTraufe, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
@@ -52,45 +52,89 @@ export const RECHNER: Rechner[] = [
     titel: 'Sparren',
     gruppe: 'Dach',
     kurz: 'Länge, Kerve, Obholz, Schnitte',
-    info: 'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen. Anriss: Alle Lagen gelten entlang der Sparrenkante ab dem Senkelriss an der Traufe, an Ober- und Unterkante gleich. Auf dem Kervensenkel das Obholz von der Oberkante herunter messen, das ergibt die Kervenecke; von dort läuft der Waagriss zur Unterkante. Am Alphawinkel die Dachneigung einstellen: Der Waagriss liegt im Winkel der Dachneigung zur Sparrenkante, der Senkelriss rechtwinklig dazu. Die Skala des eigenen Winkels vorher an einem bekannten Riss prüfen.',
+    info: 'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen. Mittel- und Firstpfette bekommen dieselbe Kerventiefe wie die Fußpfette; ihre Oberkanten liegen dann um die angegebene Höhe über der Fußpfette. Anriss: Alle Lagen gelten entlang der Sparrenkante ab dem Senkel durch den Traufpunkt, an Ober- und Unterkante gleich – auch wenn die Traufe winkelrecht oder mit Waagschnitt abgeschnitten wird. Auf dem Kervensenkel das Obholz von der Oberkante herunter messen, das ergibt die Kervenecke; von dort läuft der Waagriss zur Unterkante. Am Alphawinkel die Dachneigung einstellen: Der Waagriss liegt im Winkel der Dachneigung zur Sparrenkante, der Senkelriss rechtwinklig dazu. Die Skala des eigenen Winkels vorher an einem bekannten Riss prüfen.',
     skizze: `<path ${S} d="M20 100 L150 22 L150 100"/><path ${D} d="M20 100 H150"/><text ${T} x="72" y="114">Grundmaß</text><text ${T} x="156" y="66">Firsthöhe</text><text ${T} x="40" y="50">Sparrenlänge</text><text ${T} x="44" y="96">α</text>`,
     felder: [
       { id: 'g', label: 'Grundmaß', art: 'len', hinweis: 'Außenkante Fußpfette bis Firstmitte' },
       { id: 'a', label: 'Dachneigung', art: 'ang', vorgabe: 35 },
-      { id: 'ue', label: 'Dachüberstand (waagerecht)', art: 'len', vorgabe: 0 },
+      { id: 'ue', label: 'Dachüberstand (waagerecht)', art: 'len', vorgabe: 0, hinweis: 'bis zum Traufpunkt an der Sparrenoberkante' },
       { id: 'h', label: 'Sparrenhöhe', art: 'len' },
-      { id: 'k', label: 'Kerventiefe', art: 'len', vorgabe: 0 },
+      { id: 'k', label: 'Kerventiefe', art: 'len', vorgabe: 0, hinweis: 'gilt für alle Pfetten' },
+      {
+        id: 'tr',
+        label: 'Traufabschnitt',
+        art: 'select',
+        vorgabe: 'senkel',
+        optionen: [
+          { wert: 'senkel', label: 'lotrecht (Senkelschnitt)' },
+          { wert: 'winkel', label: 'winkelrecht zur Sparrenkante' },
+          { wert: 'kombi', label: 'Senkelschnitt mit Waagschnitt' },
+        ],
+      },
+      { id: 'ts', label: 'Höhe Senkelschnitt an der Traufe', art: 'len', hinweis: 'lotrecht ab Oberkante, z. B. Höhe des Stirnbretts', wenn: (w) => w.tr === 'kombi' },
+      { id: 'mp', label: 'Grundmaß bis Mittelpfette', art: 'len', optional: true, hinweis: 'waagerecht ab Außenkante Fußpfette bis zur traufseitigen Kante der Mittelpfette' },
+      { id: 'fp', label: 'Breite Firstpfette', art: 'len', optional: true, hinweis: 'leer = ohne Firstpfette' },
     ],
     rechne: (w) => {
-      const r = sparren({ grundmass: zahl(w, 'g'), neigung: zahl(w, 'a'), ueberstand: zahl(w, 'ue'), sparrenhoehe: zahl(w, 'h'), kerve: zahl(w, 'k') })
+      const profil = w.tr === 'winkel' || w.tr === 'kombi' ? w.tr : 'senkel'
+      const eingabe = {
+        grundmass: zahl(w, 'g'),
+        neigung: zahl(w, 'a'),
+        ueberstand: zahl(w, 'ue'),
+        sparrenhoehe: zahl(w, 'h'),
+        kerve: zahl(w, 'k'),
+        traufe: profil,
+        stirn: profil === 'kombi' ? zahl(w, 'ts') : undefined,
+        mittelpfette: opt(w, 'mp'),
+        firstpfette: opt(w, 'fp'),
+      } as const
+      const r = sparren(eingabe)
+      const [mitUe, mitKerve] = [eingabe.ueberstand > 0, eingabe.kerve > 0]
+      const tp = r.traufe.profil
+      // Anrissliste in der Reihenfolge entlang des Sparrens
+      const risse: [string, number][] = [
+        [tp === 'winkel' ? 'Traufe: Winkelriss am Traufpunkt (Oberkante)' : 'Traufe: Senkelriss', 0],
+        ...(tp === 'kombi' ? ([['Traufe: Ende des Waagschnitts an der Unterkante', r.traufe.waagEnde]] as [string, number][]) : []),
+        ...(mitUe || mitKerve ? ([['Kerve: Senkelriss an Außenkante Fußpfette', r.anriss.kerveSenkel]] as [string, number][]) : []),
+        ...(mitKerve ? ([['Kerve: Ende des Waagrisses an der Unterkante', r.anriss.kerveEnde]] as [string, number][]) : []),
+        ...(r.mittelpfette ? ([['Mittelpfette: Senkelriss an der traufseitigen Kante', r.mittelpfette.senkel]] as [string, number][]) : []),
+        ...(r.mittelpfette && mitKerve ? ([['Mittelpfette: Ende des Waagrisses an der Unterkante', r.mittelpfette.ende]] as [string, number][]) : []),
+        ...(r.firstpfette ? ([['Firstpfette: Senkelriss an der traufseitigen Kante', r.firstpfette.senkel]] as [string, number][]) : []),
+        ['First: Senkelriss', r.anriss.first],
+      ]
       return {
-        zeichnung: zeichneSparren(zahl(w, 'g'), zahl(w, 'ue'), zahl(w, 'a'), zahl(w, 'h'), zahl(w, 'k')),
-        details: detail('Detail Kerve', zeichneKerve(zahl(w, 'a'), zahl(w, 'h'), zahl(w, 'k'))),
+        zeichnung: zeichneSparren(eingabe),
+        details: [
+          ...(mitUe ? detail(tp === 'senkel' ? 'Detail Traufe: Senkelschnitt' : tp === 'winkel' ? 'Detail Traufe: winkelrechter Abschnitt' : 'Detail Traufe: Senkelschnitt mit Waagschnitt', zeichneTraufe(eingabe.neigung, eingabe.sparrenhoehe, tp, r.traufe.stirn)) : []),
+          ...detail('Detail Kerve Fußpfette', zeichneKerve(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, 'Fußpfette', r.anriss.kerveSenkel)),
+          ...(r.mittelpfette ? detail('Detail Kerve Mittelpfette', zeichneKerve(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, 'Mittelpfette', r.mittelpfette.senkel)) : []),
+          ...detail(r.firstpfette ? 'Detail First mit Firstpfette' : 'Detail First: Senkelschnitt', zeichneFirst(eingabe.neigung, eingabe.sparrenhoehe, eingabe.kerve, eingabe.firstpfette ?? 0, r.anriss.first, r.firstpfette?.senkel)),
+        ],
         ausgaben: [
           L('Sparrenlänge gesamt', r.laengeGesamt, true),
           L('davon Fußpfette bis First', r.laengeGrund),
           L('davon Überstand', r.laengeUeberstand),
+          L('Holzlänge mindestens (mit Schnittschrägen)', r.rohlaenge),
           L('Firsthöhe über Auflager', r.firsthoehe),
           L('Lotschnitt (Senkel)', r.lotschnitt),
           L('Waagschnitt', r.waagschnitt),
           L('Obholz lotrecht', r.obholz),
           L('Kerve: Auflage waagerecht', r.kervenSattel),
           L('Kerve: Wange lotrecht', r.kervenLot),
+          ...(tp === 'winkel' ? [L('Traufe: Unterkante steht waagerecht vor', r.traufe.vorsprung)] : []),
+          ...(tp === 'kombi' ? [L('Traufe: Länge des Waagschnitts', r.traufe.waag)] : []),
+          ...(r.mittelpfette ? [L('Mittelpfette: Oberkante über Oberkante Fußpfette', r.mittelpfette.hoehe)] : []),
+          ...(r.firstpfette ? [L('Firstpfette: Oberkante über Oberkante Fußpfette', r.firstpfette.hoehe), ...(mitKerve ? [L('Firstpfette: Auflage waagerecht', r.firstpfette.auflage)] : [])] : []),
           W('Anriss: Senkelriss zur Sparrenkante', r.anriss.winkelSenkel, true),
           W('Anriss: Waagriss zur Sparrenkante', r.anriss.winkelWaage, true),
           L('Versatz Senkelriss über die Sparrenhöhe', r.anriss.versatzSenkel),
           L('Versatz Waagriss über die Sparrenhöhe', r.anriss.versatzWaage),
         ],
         liste: {
-          titel: 'Anriss am Sparren, ab Senkelriss Traufe entlang der Kante',
+          titel: 'Anriss am Sparren, ab Traufpunkt entlang der Kante',
           kopf: ['Nr.', 'Riss', 'Lage'],
           arten: ['int', 'wort', 'len'],
-          zeilen: [
-            [1, 'Traufe: Senkelriss', 0],
-            ...(zahl(w, 'ue') > 0 || zahl(w, 'k') > 0 ? [[2, 'Kerve: Senkelriss an Außenkante Fußpfette', r.anriss.kerveSenkel]] : []),
-            ...(zahl(w, 'k') > 0 ? [[3, 'Kerve: Ende des Waagrisses an der Unterkante', r.anriss.kerveEnde]] : []),
-            [4, 'First: Senkelriss', r.anriss.first],
-          ].map((z, i) => [i + 1, z[1], z[2]]),
+          zeilen: risse.map((z, i) => [i + 1, z[0], z[1]]),
         },
       }
     },

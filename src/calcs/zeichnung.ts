@@ -226,6 +226,19 @@ function blatt(punkte: Punkt[], rand: Rand) {
   return b
 }
 
+/**
+ * Kettenmaß an einem Riss: Lage ab Traufpunkt entlang der Sparrenkante, über der Oberkante
+ * in Sparrenrichtung geschrieben. seite = 1 schreibt bergauf vom Punkt weg, -1 endet am Punkt.
+ */
+function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert: number, seite: 1 | -1 = 1): void {
+  const r = (neigungGrad * Math.PI) / 180
+  const [x, y] = b.px(p)
+  const [ab, laengs] = [8, 4 * seite]
+  b.mass({ x: x - Math.sin(r) * ab + Math.cos(r) * laengs, y: y - Math.cos(r) * ab - Math.sin(r) * laengs, wert, art: 'len', drehung: -neigungGrad, anker: seite === 1 ? 'start' : 'end', name: 'ab Traufpunkt', klein: true })
+  // kurzer Strich am Riss über die Kante hinaus
+  b.roh(`<path ${STRICH} d="M${f1(x)},${f1(y)} L${f1(x - Math.sin(r) * 5)},${f1(y - Math.cos(r) * 5)}"/>`)
+}
+
 /** Waagerechte von der Kerve nach rechts; die Neigung steht darunter, wo nichts anderes liegt. */
 function waagUndWinkel(b: ReturnType<typeof blatt>, sattel: number, pf: number, xb: number, neigung: number): void {
   b.zug([[Math.max(sattel, pf), 0], [xb, 0]], HILF)
@@ -234,8 +247,27 @@ function waagUndWinkel(b: ReturnType<typeof blatt>, sattel: number, pf: number, 
 }
 
 /** Nullpunkt ist die Kervenecke an der Außenkante der Fußpfette; ohne Kerve liegt er auf der Sparrenunterkante. */
-export function zeichneSparren(grundmass: number, ueberstand: number, neigungGrad: number, sparrenhoehe: number, kerve = 0): Zeichnung | undefined {
-  const rad = (neigungGrad * Math.PI) / 180
+export interface SparrenBild {
+  grundmass: number
+  ueberstand: number
+  neigung: number
+  sparrenhoehe: number
+  kerve: number
+  traufe?: 'senkel' | 'winkel' | 'kombi'
+  stirn?: number
+  /** traufseitige Kante der Mittelpfette, waagerecht ab Außenkante Fußpfette */
+  mittelpfette?: number
+  /** Breite der Firstpfette */
+  firstpfette?: number
+}
+
+/**
+ * Seitenansicht des Sparrens mit Traufabschnitt, Kerven und Pfetten.
+ * Nullpunkt ist die Kervenecke an der Außenkante der Fußpfette.
+ */
+export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
+  const { grundmass, ueberstand, sparrenhoehe, kerve } = e
+  const rad = (e.neigung * Math.PI) / 180
   const t = Math.tan(rad)
   const lot = sparrenhoehe / Math.cos(rad)
   if (!gueltig(grundmass, ueberstand, t, lot, kerve)) return undefined
@@ -243,43 +275,151 @@ export function zeichneSparren(grundmass: number, ueberstand: number, neigungGra
   const kLot = kerve / Math.cos(rad)
   const kSattel = kerve > 0 ? kerve / Math.sin(rad) : 0
   const unten = (x: number): number => x * t - kLot
+  const oben = (x: number): Punkt => [x, unten(x) + lot]
+  const xFirst = e.firstpfette ? grundmass - e.firstpfette / 2 : undefined
+  // Traufabschnitt, in Umlaufrichtung nach der oberen Ecke
+  const profil = ueberstand > 0 ? (e.traufe ?? 'senkel') : 'senkel'
+  const [tx, ty] = oben(-ueberstand)
+  let anfang: Punkt[] = [[-ueberstand, unten(-ueberstand)]]
+  if (profil === 'winkel') anfang = [[tx + sparrenhoehe * Math.sin(rad), ty - sparrenhoehe * Math.cos(rad)]]
+  if (profil === 'kombi' && gueltig(e.stirn ?? NaN) && (e.stirn as number) < lot) anfang = [[tx, ty - (e.stirn as number)], [tx + (lot - (e.stirn as number)) / t, ty - (e.stirn as number)]]
+  // Kerve an der Stelle x: Wange hoch zur Ecke, Waagriss zurück auf die Unterkante (am First höchstens bis zum Firstschnitt)
+  const kerbe = (x: number): Punkt[] => (kerve > 0 ? [[x, unten(x)], [x, x * t], [Math.min(x + kSattel, grundmass), x * t]] : [])
+  const firstUnten: Punkt = xFirst !== undefined && kerve > 0 && xFirst + kSattel >= grundmass ? [grundmass, xFirst * t] : [grundmass, unten(grundmass)]
   const sparren: Punkt[] = [
-    [-ueberstand, unten(-ueberstand)],
-    // Kerve: lotrechte Wange hoch zur Ecke, waagerechter Sattel zurück auf die Unterkante
-    ...(kerve > 0 ? ([[0, unten(0)], [0, 0], [kSattel, 0]] as Punkt[]) : []),
-    [grundmass, unten(grundmass)],
-    [grundmass, unten(grundmass) + lot],
-    [-ueberstand, unten(-ueberstand) + lot],
+    ...anfang,
+    ...kerbe(0),
+    ...(e.mittelpfette ? kerbe(e.mittelpfette) : []),
+    ...(xFirst !== undefined ? kerbe(xFirst) : []),
+    firstUnten,
+    oben(grundmass),
+    [tx, ty],
   ]
-  const obenLinks = sparren[sparren.length - 1]
-  const obenRechts = sparren[sparren.length - 2]
-  const kerveOben: Punkt = [0, unten(0) + lot]
-  // Fußpfette nur angedeutet, ihre Maße sind nicht bekannt
+  // Pfetten: Maße nicht bekannt, deshalb nur angedeutet; die Firstpfette in ihrer Breite
   const pf = Math.max(kSattel, sparrenhoehe * 0.6)
-  const pfette: Punkt[] = [
-    [0, 0],
-    [pf, 0],
-    [pf, -pf],
-    [0, -pf],
+  const kasten = (x: number, breit: number): Punkt[] => [
+    [x, x * t],
+    [x + breit, x * t],
+    [x + breit, x * t - pf],
+    [x, x * t - pf],
   ]
+  const pfetten = [kasten(0, pf), ...(e.mittelpfette ? [kasten(e.mittelpfette, pf)] : []), ...(xFirst !== undefined ? [kasten(xFirst, e.firstpfette as number)] : [])]
   const mitFuss = ueberstand > 0 || kerve > 0
-  const b = blatt([...sparren, ...pfette, [grundmass, 0]], { l: 32, r: 30, o: 44, u: 38 })
+  const b = blatt([...sparren, ...pfetten.flat(), [grundmass, 0]], { l: 32, r: 30, o: 44, u: 38 })
   b.zug([[0, 0], [grundmass, 0], [grundmass, unten(grundmass)]], HILF)
-  if (mitFuss) b.zug([[0, 0], kerveOben], HILF)
-  b.zug(pfette, SCHNITT, true)
-  kreuz(b, pfette)
-  b.zug(sparren, FLAECHE, true)
-  // unten: Überstand und Grundmaß; rechts: Firsthöhe; am Sparren: Teillängen und Gesamtlänge
-  b.kette([[-ueberstand, 0], [0, 0], [grundmass, 0]], { h: b.kante.unten + KETTE_1 }, { feld: ['ue', 'g'] })
-  b.kette([[grundmass, 0], [grundmass, grundmass * t]], { v: b.kante.rechts + KETTE_1 })
-  if (mitFuss && ueberstand > 0) {
-    b.kette([obenLinks, kerveOben, obenRechts], { p: KETTE_1 })
-    b.kette([obenLinks, obenRechts], { p: KETTE_2 })
-  } else {
-    b.kette([obenLinks, obenRechts], { p: KETTE_1 })
+  if (mitFuss) b.zug([[0, 0], oben(0)], HILF)
+  for (const p of pfetten) {
+    b.zug(p, SCHNITT, true)
+    kreuz(b, p)
   }
+  b.zug(sparren, FLAECHE, true)
+  // unten die Grundmaße, rechts die Firsthöhe, am Sparren die Anrisslagen und die Gesamtlänge
+  const xs = [-ueberstand, 0, ...(e.mittelpfette ? [e.mittelpfette] : []), ...(xFirst !== undefined ? [xFirst] : []), grundmass].filter((x, i, a) => i === 0 || x - a[i - 1] > 1e-9)
+  const feldVon = (von: number, bis: number): string | undefined =>
+    von < -1e-9 && Math.abs(bis) < 1e-9 ? 'ue' : Math.abs(von) < 1e-9 && bis === grundmass ? 'g' : Math.abs(von) < 1e-9 && bis === e.mittelpfette ? 'mp' : undefined
+  b.kette(xs.map((x): Punkt => [x, 0]), { h: b.kante.unten + KETTE_1 }, { feld: xs.slice(1).map((x, i) => feldVon(xs[i], x)) })
+  b.kette([[grundmass, 0], [grundmass, grundmass * t]], { v: b.kante.rechts + KETTE_1 })
+  const risse = (mitFuss ? xs : [xs[0], xs[xs.length - 1]]).map(oben)
+  b.kette(risse, { p: KETTE_1 })
+  if (risse.length > 2) b.kette([risse[0], risse[risse.length - 1]], { p: KETTE_2 })
   // Neigung im Dreieck, dort wo zwischen Grundlinie und Sparren Platz ist
-  b.anPunkt([grundmass * 0.6, 0], neigungGrad, 0, -8, { art: 'ang', feld: 'a' })
+  b.anPunkt([grundmass * 0.6, 0], e.neigung, 0, -8, { art: 'ang', feld: 'a' })
+  return b.fertig()
+}
+
+/** Traufabschnitt vergrößert. Nullpunkt ist der Traufpunkt an der Oberkante. */
+export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil: 'senkel' | 'winkel' | 'kombi', stirn = 0): Zeichnung | undefined {
+  const rad = (neigungGrad * Math.PI) / 180
+  if (!gueltig(rad, sparrenhoehe, stirn) || !(sparrenhoehe > 0)) return undefined
+  const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
+  const lot = sparrenhoehe / cos
+  const xe = 2.4 * sparrenhoehe * cos + (profil === 'kombi' ? (lot - stirn) / t : 0)
+  const ende: Punkt[] = [
+    [xe, xe * t - lot],
+    [xe, xe * t],
+    [0, 0],
+  ]
+  const ecke: Punkt = [sparrenhoehe * sin, -sparrenhoehe * cos]
+  const waag = (lot - stirn) / t
+  const anfang: Punkt[] = profil === 'winkel' ? [ecke] : profil === 'kombi' ? [[0, -stirn], [waag, -stirn]] : [[0, -lot]]
+  const b = blatt([...anfang, ...ende, [0, -lot]], { l: 50, r: 22, o: 22, u: 40 })
+  // weggeschnittenes Holz bis zum Senkel bzw. zur vollen Ecke, gestrichelt
+  if (profil === 'kombi') b.zug([[0, -stirn], [0, -lot], [waag, -stirn]], HILF)
+  if (profil === 'winkel') b.zug([[0, 0], [0, -lot], ecke], HILF)
+  b.zug([...anfang, ...ende], FLAECHE, true)
+  text(b, [0, 0], -3, -9, 'Traufpunkt', { anker: 'end' })
+  if (profil === 'senkel') {
+    b.kette([[0, -lot], [0, 0]], { v: b.kante.links - KETTE_1 })
+  } else if (profil === 'winkel') {
+    // Abschnitt winkelrecht: Sparrenhöhe am Schnitt, unten der Vorsprung der Unterkante
+    b.kette([[0, 0], ecke], { p: -13 }, { werte: [sparrenhoehe], feld: ['h'] })
+    b.kette([[0, -lot], [ecke[0], -lot]], { h: b.kante.unten + KETTE_1 }, { kurz: true })
+  } else {
+    b.kette([[0, -stirn], [0, 0]], { v: b.kante.links - KETTE_1 }, { feld: ['ts'] })
+    b.kette([[0, -stirn], [waag, -stirn]], { h: b.kante.unten + KETTE_1 })
+  }
+  // Sparrenhöhe winkelrecht am Ende des Ausschnitts
+  const p: Punkt = [xe * 0.86, xe * 0.86 * t - lot]
+  if (profil !== 'winkel') b.kette([p, [p[0] - sparrenhoehe * sin, p[1] + sparrenhoehe * cos]], { p: -13 }, { werte: [sparrenhoehe], feld: ['h'] })
+  return b.fertig()
+}
+
+/**
+ * Firstpunkt vergrößert: Senkelschnitt in Firstmitte, mit Firstpfette auch deren Kerve.
+ * Nullpunkt ist der Firstpunkt an der Oberkante.
+ */
+export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: number, firstpfette = 0, lageFirst?: number, lageKerve?: number): Zeichnung | undefined {
+  const rad = (neigungGrad * Math.PI) / 180
+  if (!gueltig(rad, sparrenhoehe, kerve, firstpfette) || !(sparrenhoehe > kerve)) return undefined
+  const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
+  const lot = sparrenhoehe / cos
+  const kLot = kerve / cos
+  const kSattel = kerve > 0 ? kerve / sin : 0
+  const xk = -firstpfette / 2
+  const xa = xk - 1.7 * sparrenhoehe * cos
+  const unten = (x: number): number => x * t - lot
+  // Höhe der Pfettenoberkante = Kervenecke
+  const yk = unten(xk) + kLot
+  const mitKerve = firstpfette > 0 && kerve > 0
+  const bisFirst = mitKerve && xk + kSattel >= 0
+  const fussFirst: Punkt = bisFirst ? [0, yk] : [0, -lot]
+  const sparren: Punkt[] = [
+    [xa, unten(xa)],
+    ...(mitKerve ? ([[xk, unten(xk)], [xk, yk], ...(bisFirst ? [] : [[xk + kSattel, yk]])] as Punkt[]) : []),
+    fussFirst,
+    [0, 0],
+    [xa, xa * t],
+  ]
+  const pfette: Punkt[] = [
+    [xk, yk],
+    [-xk, yk],
+    [-xk, yk - firstpfette],
+    [xk, yk - firstpfette],
+  ]
+  const b = blatt([...sparren, ...(firstpfette > 0 ? pfette : []), [sparrenhoehe * 1.2 * cos, 0]], { l: 46, r: 68, o: 30, u: 36 })
+  if (firstpfette > 0) {
+    b.zug(pfette, SCHNITT, true)
+    kreuz(b, pfette)
+    text(b, [0, yk - firstpfette * 0.82], 0, 0, 'Firstpfette')
+  }
+  // Gegensparren nur angedeutet
+  b.zug([[0, 0], [-xa * 0.45, xa * 0.45 * t]], HILF)
+  b.zug(sparren, FLAECHE, true)
+  // rechts der Firstschnitt, unten die Auflage, links Wange und Obholz an der Kerve
+  b.kette([fussFirst, [0, 0]], { v: b.kante.rechts + KETTE_1 })
+  if (firstpfette > 0) {
+    const pts: Punkt[] = mitKerve && !bisFirst ? [[xk, 0], [xk + kSattel, 0], [0, 0]] : [[xk, 0], [0, 0]]
+    b.kette(pts, { h: b.kante.unten + KETTE_1 }, { kurz: true })
+  }
+  if (mitKerve) b.kette([[xk, unten(xk)], [xk, yk], [xk, xk * t]], { v: b.kante.links - KETTE_1 }, { kurz: true })
+  else {
+    const p: Punkt = [xa * 0.5, unten(xa * 0.5)]
+    b.kette([p, [p[0] - sparrenhoehe * sin, p[1] + sparrenhoehe * cos]], { p: 13 }, { werte: [sparrenhoehe], feld: ['h'] })
+  }
+  if (mitKerve) b.zug([[xk, yk], [xk, xk * t]], HILF)
+  // am Firstpunkt waagerecht über der Spitze, damit es nicht aus dem Blatt läuft
+  if (lageFirst !== undefined) b.mass({ ...ort(b, [0, 0], -12, -10), wert: lageFirst, art: 'len', anker: 'start', name: 'ab Traufpunkt', klein: true })
+  if (lageKerve !== undefined && firstpfette > 0) lageAn(b, [xk, xk * t], neigungGrad, lageKerve, -1)
   return b.fertig()
 }
 
@@ -631,7 +771,7 @@ export function zeichneDachfenster(
  * Vergrößertes Detail der Kerve: Sattel, Wange, Obholz, Kerventiefe und Sparrenhöhe.
  * Die Fußpfette ist nur angedeutet, ihre Maße sind nicht bekannt.
  */
-export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: number): Zeichnung | undefined {
+export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: number, name = 'Fußpfette', lage?: number): Zeichnung | undefined {
   const rad = (neigungGrad * Math.PI) / 180
   if (!gueltig(rad, sparrenhoehe, kerve) || !(kerve > 0) || !(sparrenhoehe > kerve)) return undefined
   const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
@@ -651,21 +791,21 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
     [xb, unten(xb) + lot],
     [xa, unten(xa) + lot],
   ]
-  const pf = Math.max(kSattel * 1.15, sparrenhoehe * 0.7)
+  const pf = Math.max(kSattel * 1.15, sparrenhoehe * 0.95)
   const pfette: Punkt[] = [
     [0, 0],
     [pf, 0],
     [pf, -pf],
     [0, -pf],
   ]
-  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 16, u: 34 })
+  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 24, u: 34 })
   b.zug(pfette, SCHNITT, true)
   kreuz(b, pfette)
   b.zug(sparren, FLAECHE, true)
   // Senkelriss durch die Kervenecke bis zur Oberkante
   const oben: Punkt = [0, unten(0) + lot]
   b.zug([[0, 0], oben], HILF)
-  b.mass({ ...(() => { const [x, y] = b.px([pf / 2, -pf / 2]); return { x, y } })(), wert: 0, art: 'len', text: 'Fußpfette', klein: true })
+  b.mass({ ...(() => { const [x, y] = b.px([pf / 2, -pf * 0.8]); return { x, y } })(), wert: 0, art: 'len', text: name, klein: true })
   // unten: Sattel; links: Wange und Obholz auf dem Senkelriss
   b.kette([[0, 0], [kSattel, 0]], { h: b.kante.unten + KETTE_1 })
   b.kette([[0, unten(0)], [0, 0], oben], { v: b.kante.links - KETTE_1 })
@@ -673,6 +813,7 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
   const p: Punkt = [xb * 0.82, unten(xb * 0.82)]
   b.kette([p, [p[0] - sparrenhoehe * sin, p[1] + sparrenhoehe * cos]], { p: -13 }, { werte: [sparrenhoehe], feld: ['h'] })
   waagUndWinkel(b, kSattel, pf, xb, neigungGrad)
+  if (lage !== undefined) lageAn(b, oben, neigungGrad, lage)
   return b.fertig()
 }
 

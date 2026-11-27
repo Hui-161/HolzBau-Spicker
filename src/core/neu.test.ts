@@ -282,3 +282,54 @@ describe('Gratsparren: Anfallspunkt und Kerve', () => {
     expect(() => gratKerve(faelle[0], 10, 30)).toThrow()
   })
 })
+
+describe('Sparren: Pfettenkerven, Traufabschnitt, Holzlänge', () => {
+  const rad = (g: number) => (g * Math.PI) / 180
+  const e = { grundmass: 400, neigung: 35, ueberstand: 50, sparrenhoehe: 18, kerve: 3 }
+  // Unterkante des Sparrens als Gerade; Nullpunkt = Kervenecke der Fußpfette
+  const lot = 18 / Math.cos(rad(35))
+  const kLot = 3 / Math.cos(rad(35))
+  const unten = (x: number) => x * Math.tan(rad(35)) - kLot
+  it('Mittel- und Firstpfette: Lage, Höhe und Auflage aus der Geometrie der Unterkante', () => {
+    const r = sparren({ ...e, mittelpfette: 200, firstpfette: 14 })
+    const m = r.mittelpfette!
+    // Pfettenoberkante = Kervenecke: liegt um das Kervenlot über der Unterkante
+    nah(m.hoehe, unten(200) + kLot)
+    // Lage entlang der Kante = Abstand der beiden Senkel durch Traufpunkt und Kervenecke
+    nah(m.senkel, Math.hypot(250, 250 * Math.tan(rad(35))))
+    // Waagriss endet, wo die Unterkante die Pfettenoberkante erreicht
+    const xe = (m.ende - m.senkel) * Math.cos(rad(35))
+    nah(unten(200 + xe), m.hoehe)
+    const f = r.firstpfette!
+    nah(f.grund, 393)
+    nah(f.hoehe, 393 * Math.tan(rad(35)))
+    // Sattel 3/sin35 = 5,23 passt auf die halbe Pfette (7): volle Auflage
+    nah(f.auflage, 3 / Math.sin(rad(35)))
+    // schmale Firstpfette: Auflage endet am Firstschnitt
+    nah(sparren({ ...e, firstpfette: 8 }).firstpfette!.auflage, 4)
+    expect(() => sparren({ ...e, mittelpfette: 399 })).toThrow()
+    expect(() => sparren({ ...e, mittelpfette: 2 })).toThrow()
+    expect(() => sparren({ ...e, firstpfette: 900 })).toThrow()
+  })
+  it('Traufabschnitt: winkelrecht und Senkel- mit Waagschnitt', () => {
+    const w = sparren({ ...e, traufe: 'winkel' })
+    // untere Ecke = Traufpunkt + Sparrenhöhe winkelrecht zur Kante
+    nah(w.traufe.vorsprung, 18 * Math.sin(rad(35)))
+    nah(w.rohlaenge, w.laengeGesamt) // rechteckiges Ende: kein Zuschlag
+    const s = sparren({ ...e })
+    nah(s.rohlaenge, s.laengeGesamt + 18 * Math.tan(rad(35)))
+    const k = sparren({ ...e, traufe: 'kombi', stirn: 12 })
+    // Waagschnitt auf Höhe 12 unter dem Traufpunkt bis zur Unterkante (die liegt am Traufsenkel um lot tiefer)
+    nah(k.traufe.waag, (lot - 12) / Math.tan(rad(35)))
+    nah(k.traufe.waagEnde, Math.hypot(k.traufe.waag, lot - 12))
+    // hier beginnt die Unterkante erst hinter dem Traufpunkt (17,4 > 12,6): die Oberkante bestimmt die Länge
+    nah(k.rohlaenge, k.laengeGesamt)
+    // hoher Senkelschnitt: die Unterkante beginnt noch vor dem Traufpunkt, um den Rest wird das Holz länger
+    const k2 = sparren({ ...e, traufe: 'kombi', stirn: 20 })
+    nah(k2.rohlaenge, k2.laengeGesamt + 18 * Math.tan(rad(35)) - k2.traufe.waagEnde)
+    expect(() => sparren({ ...e, traufe: 'kombi', stirn: 30 })).toThrow()
+    expect(() => sparren({ ...e, ueberstand: 5, traufe: 'winkel' })).toThrow()
+    // ohne Überstand bleibt es beim Senkelschnitt
+    expect(sparren({ ...e, ueberstand: 0, traufe: 'winkel' }).traufe.profil).toBe('senkel')
+  })
+})

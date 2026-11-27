@@ -6,7 +6,7 @@ Kontrollrechnungen getestet. Texte, Skizzen und Aufbau sind eigene.
 
 ## Enthalten
 
-- Sparren: Länge, Überstand, Firsthöhe, Lot-/Waagschnitt, Obholz, Kerve
+- Sparren: Länge, Überstand, Firsthöhe, Lot-/Waagschnitt, Obholz, Kerven an Fuß-, Mittel- und Firstpfette, Traufabschnitt (lotrecht, winkelrecht, Senkel- mit Waagschnitt), Anrissliste mit Kettenmaßen ab Traufpunkt, Mindest-Holzlänge; Details zu Traufe, jeder Kerve und First
 - Grat/Kehle: Länge, Neigung, Grundmaße, Grundwinkel, Schifterwinkel, Abgratung, Verstich, Hexenschnitt, Schifterliste (auch ungleiche Neigungen)
 - Kehlbalken / Zange: Längen, Abschnitt, Riss am Sparren
 - Pultdach, Zelt- und Turmdach über dem Vieleck, Schleppgaube
@@ -23,6 +23,8 @@ Kontrollrechnungen getestet. Texte, Skizzen und Aufbau sind eigene.
 - Neigung umrechnen, Dachfläche, Stichbogen, Treppe, Holzmenge mit Gewicht, Maßstab, Holzstern
 - Projekte mit eigenen Eingaben und Notizen, Teilen per Link oder QR-Code, Drucken/PDF
 - Maßstäbliche Zeichnungen mit Maßzahlen zu Sparren, Grat mit Schiftern, Kehlbalken, Einteilung, Dreieck und Stern
+- Zeichnungen als Plandetails (Haarlinien auf weißem Grund) mit Maßketten; blau gesetzte Eingabemaße lassen sich in der Zeichnung antippen und ändern
+- Grat-/Kehlsparren: Details zu Seitenansicht, Gratfuß mit Verstich, Abgratung, Hexenschnitt, Anfallspunkt mit Backen und Kerve über der Pfettenecke
 - Deutsch und Englisch, umschaltbar auf der Startseite
 - Abnahmeprotokoll mit Mängelliste und Bautagesbericht
 - Stammdaten des Betriebs und Angaben zum Projekt werden in allen Vorlagen vorbelegt

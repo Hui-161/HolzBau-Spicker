@@ -11,6 +11,28 @@ export interface SparrenEingabe {
   sparrenhoehe: number
   /** Kerventiefe, winkelrecht zur Sparrenunterkante */
   kerve: number
+  /** Traufabschnitt: lotrecht, winkelrecht zur Sparrenkante oder Senkel- mit Waagschnitt (Vorgabe: lotrecht) */
+  traufe?: 'senkel' | 'winkel' | 'kombi'
+  /** nur bei „kombi“: Höhe des Senkelschnitts, lotrecht ab Oberkante */
+  stirn?: number
+  /** Mittelpfette: waagerecht von Außenkante Fußpfette bis zur traufseitigen Kante der Mittelpfette */
+  mittelpfette?: number
+  /** Breite der Firstpfette; sie liegt mittig unter dem First */
+  firstpfette?: number
+}
+
+/** Kerve an einer Pfette; alle Kerven haben dieselbe Tiefe, der Sparren liegt gerade durch. */
+export interface PfettenKerve {
+  /** waagerecht ab Außenkante Fußpfette bis zur traufseitigen Kante dieser Pfette */
+  grund: number
+  /** Senkelriss der Kerve: Lage entlang der Sparrenkante ab dem Traufpunkt */
+  senkel: number
+  /** an der Unterkante: Ende des Waagrisses */
+  ende: number
+  /** waagerechte Auflage auf der Pfette */
+  auflage: number
+  /** Oberkante dieser Pfette über Oberkante Fußpfette */
+  hoehe: number
 }
 
 export function sparren(e: SparrenEingabe) {
@@ -22,7 +44,61 @@ export function sparren(e: SparrenEingabe) {
   const s = sin(e.neigung)
   const laengeGrund = e.grundmass / c
   const laengeUeberstand = e.ueberstand / c
+  const t = tan(e.neigung)
+  const lot = e.sparrenhoehe / c
+  const sattel = e.kerve / s
+  const pfette = (grund: number, platz = Infinity): PfettenKerve => ({
+    grund,
+    senkel: (e.ueberstand + grund) / c,
+    ende: (e.ueberstand + grund) / c + Math.min(sattel, platz) / c,
+    auflage: Math.min(sattel, platz),
+    hoehe: grund * t,
+  })
+  // Firstpfette: Kerve an ihrer traufseitigen Kante; der Waagriss endet spätestens am Firstschnitt
+  let first: PfettenKerve | undefined
+  if (e.firstpfette !== undefined) {
+    pruefe(e.firstpfette > 0, 'Die Breite der Firstpfette muss größer als 0 sein.')
+    pruefe(e.firstpfette / 2 < e.grundmass, 'Die Firstpfette ist breiter als das Dach.')
+    first = pfette(e.grundmass - e.firstpfette / 2, e.firstpfette / 2)
+  }
+  let mittel: PfettenKerve | undefined
+  if (e.mittelpfette !== undefined) {
+    pruefe(e.mittelpfette > 0, 'Das Grundmaß bis zur Mittelpfette muss größer als 0 sein.')
+    pruefe(e.mittelpfette + sattel <= (first ? first.grund : e.grundmass), 'Die Mittelpfette liegt nicht zwischen Fußpfette und First.')
+    pruefe(e.kerve === 0 || e.mittelpfette >= sattel, 'Die Mittelpfette liegt in der Kerve der Fußpfette.')
+    mittel = pfette(e.mittelpfette)
+  }
+  // Traufabschnitt; Bezug ist immer der Traufpunkt an der Oberkante
+  const profil = e.ueberstand > 0 ? (e.traufe ?? 'senkel') : 'senkel'
+  /** an der Unterkante entlang der Kante: so weit hinter dem Senkel durch den Traufpunkt beginnt das Holz */
+  let anfangUnten = 0
+  let traufe: { profil: 'senkel' | 'winkel' | 'kombi'; vorsprung: number; stirn: number; waag: number; waagEnde: number }
+  if (profil === 'winkel') {
+    pruefe(e.sparrenhoehe * s <= e.ueberstand, 'Der Dachüberstand ist für einen winkelrechten Traufabschnitt zu kurz.')
+    anfangUnten = e.sparrenhoehe * t
+    traufe = { profil, vorsprung: e.sparrenhoehe * s, stirn: e.sparrenhoehe, waag: 0, waagEnde: 0 }
+  } else if (profil === 'kombi') {
+    const stirn = e.stirn ?? NaN
+    pruefe(stirn > 0, 'Die Höhe des Senkelschnitts an der Traufe muss größer als 0 sein.')
+    pruefe(stirn < lot, 'Der Senkelschnitt an der Traufe ist höher als der Sparren – dann ist es ein reiner Senkelschnitt.')
+    const waag = (lot - stirn) / t
+    pruefe(waag <= e.ueberstand, 'Der Waagschnitt an der Traufe reicht bis über die Fußpfette – Senkelschnitt höher wählen.')
+    anfangUnten = (lot - stirn) / s
+    traufe = { profil, vorsprung: 0, stirn, waag, waagEnde: (lot - stirn) / s }
+  } else {
+    traufe = { profil: 'senkel', vorsprung: 0, stirn: lot, waag: 0, waagEnde: 0 }
+  }
   return {
+    /** Traufabschnitt: Vorsprung der Unterkante (winkelrecht), Höhe Senkelschnitt, Länge Waagschnitt, dessen Ende an der Unterkante ab Traufsenkel */
+    traufe,
+    /** Kerven an Mittel- und Firstpfette, soweit angegeben */
+    mittelpfette: mittel,
+    firstpfette: first,
+    /**
+     * kürzeste Holzlänge, aus der sich der Sparren schneiden lässt: Oberkante von Traufpunkt bis First,
+     * dazu das Stück, um das die Unterkante an der Traufe hinter dem Traufpunkt beginnt.
+     */
+    rohlaenge: laengeGrund + laengeUeberstand + Math.max(0, e.sparrenhoehe * t - anfangUnten),
     laengeGrund,
     laengeUeberstand,
     laengeGesamt: laengeGrund + laengeUeberstand,
