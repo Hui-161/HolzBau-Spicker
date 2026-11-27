@@ -119,9 +119,11 @@ test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {
   for (const [n, wert] of BEISPIELE.sparren.entries()) await felder.nth(n).fill(wert)
   await page.locator('.ergebnis text.tippbar', { hasText: '400,0' }).first().click()
   await page.locator('.massfeld input').fill('450')
+  // erst nach „Fertig“ wird übernommen
+  await expect(felder.nth(0)).toHaveValue('400')
+  await page.locator('.massfeld button[type=submit]').click()
   await expect(felder.nth(0)).toHaveValue('450')
   await expect(page.locator('.ergebnis')).toContainText('610,4')
-  await page.locator('.massfeld button').click()
   await expect(page.locator('.massfeld')).toHaveCount(0)
   expect(fehler).toEqual([])
 })

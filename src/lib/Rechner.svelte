@@ -84,6 +84,16 @@
   const feldVon = (id: string): Feld | undefined => sichtbar.find((f) => f.id === id && !istText(f))
   function tippe(bildNr: number, feld: string) {
     offenesMass = offenesMass?.bild === bildNr && offenesMass.feld === feld ? null : { bild: bildNr, feld }
+    entwurf = roh[feld] ?? ''
+  }
+  // Der neue Wert gilt erst nach „Fertig“ – sonst rechnet die Zeichnung schon mit halb getippten Zahlen
+  let entwurf = $state('')
+  function uebernimm() {
+    if (offenesMass) {
+      roh[offenesMass.feld] = entwurf
+      merke()
+    }
+    offenesMass = null
   }
   /** Eingabefeld beim Erscheinen fokussieren und markieren */
   function fokus(el: HTMLInputElement) {
@@ -128,14 +138,15 @@
   </svg>
   {#if offenesMass?.bild === nr && feldVon(offenesMass.feld)}
     {@const f = feldVon(offenesMass.feld) as Feld}
-    <form class="massfeld" onsubmit={(e) => (e.preventDefault(), (offenesMass = null))} oninput={merke}>
+    <form class="massfeld" onsubmit={(e) => (e.preventDefault(), uebernimm())}>
       <label>
         <span class="name">{t(f.label)}</span>
         <span class="feld">
-          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="done" bind:value={roh[f.id]} use:fokus />
+          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="done" bind:value={entwurf} use:fokus />
           <span class="einheit">{einheitVon(f.art, f.einheit)}</span>
         </span>
       </label>
+      <button type="button" class="neben" onclick={() => (offenesMass = null)}>{t('Abbrechen')}</button>
       <button type="submit">{t('Fertig')}</button>
     </form>
   {/if}
@@ -277,6 +288,12 @@
   }
   .massfeld input {
     min-width: 0;
+  }
+  .massfeld button.neben {
+    border-color: var(--rand);
+    background: var(--flaeche);
+    color: inherit;
+    font-weight: 400;
   }
   .massfeld button {
     flex: none;
