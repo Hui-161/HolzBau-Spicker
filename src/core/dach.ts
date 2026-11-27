@@ -478,3 +478,69 @@ export function gaubenSparrenliste(e: SattelgaubeEingabe, abstand: number, walmG
   }
   return zeilen
 }
+
+/* ---------- Gratsparren: Anfallspunkt und Kerve ---------- */
+
+/**
+ * Anfallspunkt: Der Gratsparren endet mit zwei lotrechten Backen, die sich auf der Achse treffen –
+ * eine parallel zum First (liegt am Walm-Mittelsparren bzw. First an), eine rechtwinklig dazu
+ * (liegt am Anfallssparren des Hauptdachs an). Gerechnet bis zum Anfallspunkt; halbe Holzstärken
+ * der anschließenden Hölzer sind selbst abzuziehen.
+ */
+export function gratAnfall(e: GratEingabe) {
+  const g = grat(e)
+  const b2 = e.breite / 2
+  const c = cos(g.gratNeigung)
+  return {
+    /** Winkel der Backe zur Gratachse im Grundriss */
+    planHaupt: g.winkelWalm,
+    planWalm: g.winkelHaupt,
+    /** Backenschmiege: Winkel des Risses zur Gratachse auf der (nicht abgegrateten) Oberseite */
+    schmiegeHaupt: atan(tan(g.winkelWalm) * c),
+    schmiegeWalm: atan(tan(g.winkelHaupt) * c),
+    /** um so viel liegt der Senkelriss der Backe an der Seitenfläche hinter dem Anfallspunkt (Grundriss, in Gratrichtung) */
+    rueckHaupt: b2 * tan(g.winkelHaupt),
+    rueckWalm: b2 * tan(g.winkelWalm),
+    /** dasselbe an der Sparrenkante gemessen */
+    rueckHauptKante: (b2 * tan(g.winkelHaupt)) / c,
+    rueckWalmKante: (b2 * tan(g.winkelWalm)) / c,
+  }
+}
+
+/**
+ * Kerve am Gratsparren über der Ecke der Fußpfetten. Bezug ist die Außenecke der Pfetten: dort
+ * liegt die Gratlinie um das lotrechte Obholz der Sparren über der Pfettenoberkante.
+ * An jeder Seitenfläche sitzt der Senkelriss der Kerve um den Verstich weiter innen, und das
+ * Obholz gilt dort ab der abgegrateten Kante.
+ */
+export function gratKerve(e: GratEingabe, hoeheGrat: number, obholz: number) {
+  pruefe(hoeheGrat > 0, 'Die Höhe des Gratsparrens muss größer als 0 sein.')
+  pruefe(obholz > 0, 'Das Obholz muss größer als 0 sein.')
+  const g = grat(e)
+  const c = cos(g.gratNeigung)
+  const t = tan(g.gratNeigung)
+  const lot = hoeheGrat / c
+  pruefe(lot > obholz, 'Das Obholz ist größer als die lotrechte Höhe des Gratsparrens.')
+  const seite = (abgratung: number, verstich: number) => {
+    const wange = lot - abgratung - obholz
+    pruefe(wange > 0, 'Das Obholz ist größer als die Höhe des Gratsparrens an der Kante.')
+    return {
+      verstich,
+      /** Versatz des Kervensenkels gegenüber dem Senkel durch die Pfettenecke, an der Sparrenkante gemessen */
+      verstichKante: verstich / c,
+      /** lotrechte Höhe der Seitenfläche unter der abgegrateten Kante */
+      flaecheLot: lot - abgratung,
+      /** lotrechte Wange der Kerve an dieser Seitenfläche */
+      wange,
+      /** Länge des Waagrisses an dieser Seitenfläche, waagerecht in Gratrichtung */
+      sattel: wange / t,
+    }
+  }
+  return {
+    lot,
+    /** auf der Achse, an der Pfettenecke */
+    wangeAchse: lot - obholz,
+    haupt: seite(g.abgratungHaupt, g.verstichHaupt),
+    walm: seite(g.abgratungWalm, g.verstichWalm),
+  }
+}

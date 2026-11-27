@@ -95,8 +95,13 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   const text = await page.locator('.ergebnis').innerText()
   expect(text).toContain('692,8') // Gratlänge 400·√3
   expect(text).toContain('35,26') // Gratneigung
-  // Übersicht und drei Detailzeichnungen für die Anrisspunkte
-  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(4)
+  // Übersicht und fünf Details: Seitenansicht, Gratfuß, Querschnitt, Hexenschnitt, Anfallspunkt
+  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(6)
+  // mit Sparrenhöhe und Obholz kommt die Kerve je Seite dazu
+  await felder.nth(7).fill('24')
+  await felder.nth(8).fill('16')
+  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(8)
+  await expect(page.locator('.ergebnis')).toContainText('Kerve: Wange lotrecht')
   await expect(page.locator('.ergebnis h2').first()).toContainText('Detail 1')
   await page.goto('./#/dreieck')
   for (const [n, wert] of ['3', '4', '5'].entries()) await page.locator('form input').nth(n).fill(wert)
@@ -104,6 +109,21 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   // überzählige Angabe wird abgelehnt statt still ignoriert
   await page.locator('form input').nth(3).fill('30')
   await expect(page.locator('.ergebnis .fehler')).toContainText('genau drei Werte')
+})
+
+test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {
+  const fehler = sammleFehler(page)
+  await mitSprache(page, 'de')
+  await page.goto('./#/sparren')
+  const felder = page.locator('form:not(.massfeld) input')
+  for (const [n, wert] of BEISPIELE.sparren.entries()) await felder.nth(n).fill(wert)
+  await page.locator('.ergebnis text.tippbar', { hasText: '400,0' }).first().click()
+  await page.locator('.massfeld input').fill('450')
+  await expect(felder.nth(0)).toHaveValue('450')
+  await expect(page.locator('.ergebnis')).toContainText('610,4')
+  await page.locator('.massfeld button').click()
+  await expect(page.locator('.massfeld')).toHaveCount(0)
+  expect(fehler).toEqual([])
 })
 
 test('Schlagwortsuche findet abweichende Namen und Tippfehler', async ({ page }) => {

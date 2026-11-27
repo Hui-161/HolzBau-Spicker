@@ -79,10 +79,22 @@
 
   const massText = (m: Mass): string => (m.text ? t(m.text) : `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`)
 
+  // Maß in der Zeichnung angetippt: Eingabefeld direkt unter dieser Zeichnung
+  let offenesMass = $state<{ bild: number; feld: string } | null>(null)
+  const feldVon = (id: string): Feld | undefined => sichtbar.find((f) => f.id === id && !istText(f))
+  function tippe(bildNr: number, feld: string) {
+    offenesMass = offenesMass?.bild === bildNr && offenesMass.feld === feld ? null : { bild: bildNr, feld }
+  }
+  /** Eingabefeld beim Erscheinen fokussieren und markieren */
+  function fokus(el: HTMLInputElement) {
+    el.focus()
+    el.select()
+  }
+
   const fav = $derived(zustand.favoriten.includes(rechner.id))
 </script>
 
-{#snippet bild(z: Zeichnung)}
+{#snippet bild(z: Zeichnung, nr: number)}
   <svg class="zeichnung" viewBox={`0 0 ${z.breite} ${z.hoehe}`} role="img" aria-label={t('Maßstäbliche Zeichnung')}>
     {@html z.inhalt}
     {#each z.masse ?? [] as m, i (i)}
@@ -90,12 +102,44 @@
       {#if m.hinterlegt}
         <rect class="grund" x={m.x - text.length * 2.8 - 3} y={m.y - 6.5} width={text.length * 5.6 + 6} height="13" rx="2" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined} />
       {/if}
-      <text class="mass" class:klein={m.klein} x={m.x} y={m.y} text-anchor={m.anker ?? 'middle'} dominant-baseline="middle" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined}
-        >{text}</text
-      >
+      {#if m.feld && feldVon(m.feld)}
+        {@const f = m.feld}
+        <text
+          class="mass tippbar"
+          class:klein={m.klein}
+          class:gewaehlt={offenesMass?.bild === nr && offenesMass.feld === f}
+          x={m.x}
+          y={m.y}
+          text-anchor={m.anker ?? 'middle'}
+          dominant-baseline="middle"
+          transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined}
+          role="button"
+          tabindex="0"
+          aria-label={`${t(feldVon(f)?.label ?? '')}: ${text} – ${t('ändern')}`}
+          onclick={() => tippe(nr, f)}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), tippe(nr, f))}>{text}</text
+        >
+      {:else}
+        <text class="mass" class:klein={m.klein} x={m.x} y={m.y} text-anchor={m.anker ?? 'middle'} dominant-baseline="middle" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined}
+          >{text}</text
+        >
+      {/if}
     {/each}
   </svg>
-  {#if z.masse?.length}<p class="legende">{t('Maße in')} {zustand.einheit}</p>{/if}
+  {#if offenesMass?.bild === nr && feldVon(offenesMass.feld)}
+    {@const f = feldVon(offenesMass.feld) as Feld}
+    <form class="massfeld" onsubmit={(e) => (e.preventDefault(), (offenesMass = null))} oninput={merke}>
+      <label>
+        <span class="name">{t(f.label)}</span>
+        <span class="feld">
+          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="done" bind:value={roh[f.id]} use:fokus />
+          <span class="einheit">{einheitVon(f.art, f.einheit)}</span>
+        </span>
+      </label>
+      <button type="submit">{t('Fertig')}</button>
+    </form>
+  {/if}
+  {#if z.masse?.length}<p class="legende">{t('Maße in')} {zustand.einheit}{#if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
 {/snippet}
 
 {#if rechner.skizze}
@@ -144,11 +188,11 @@
       <p class="fehler">{t(h)}</p>
     {/each}
     {#if stand.ergebnis.zeichnung}
-      {@render bild(stand.ergebnis.zeichnung)}
+      {@render bild(stand.ergebnis.zeichnung, 0)}
     {/if}
-    {#each stand.ergebnis.details ?? [] as d (d.titel)}
+    {#each stand.ergebnis.details ?? [] as d, i (d.titel)}
       <h2>{t(d.titel)}</h2>
-      {@render bild(d.zeichnung)}
+      {@render bild(d.zeichnung, i + 1)}
     {/each}
     <dl>
       {#each stand.ergebnis.ausgaben as a (a.label + a.art)}
@@ -179,31 +223,56 @@
 {/if}
 
 <style>
+  /* Planzeichnung: immer schwarz auf weiß, auch im dunklen Farbschema */
   .zeichnung {
     display: block;
     width: 100%;
     max-width: 34rem;
     margin: 0.75rem auto 0.25rem;
-    color: var(--akzent);
+    background: #fff;
+    border: 1px solid var(--linie, #bbb);
+    border-radius: 3px;
   }
   .mass {
-    fill: var(--text);
-    font-size: 10.5px;
-    font-weight: 500;
+    fill: #000;
+    font-size: 9.5px;
+    font-weight: 400;
     font-variant-numeric: tabular-nums;
-    /* heller Rand, damit die Zahl auch über Linien lesbar bleibt */
+    /* weißer Rand, damit die Zahl frei steht */
     paint-order: stroke;
-    stroke: var(--flaeche);
-    stroke-width: 3px;
+    stroke: #fff;
+    stroke-width: 2.5px;
     stroke-linejoin: round;
   }
   .mass.klein {
-    font-size: 8.5px;
-    fill: var(--leise);
+    font-size: 8px;
+    fill: #333;
+  }
+  .mass.tippbar {
+    fill: #0b50c8;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-thickness: 0.4px;
+  }
+  .mass.tippbar:focus-visible,
+  .mass.gewaehlt {
+    fill: #c2410c;
+    outline: none;
+    font-weight: 700;
   }
   .grund {
-    fill: var(--flaeche);
+    fill: #fff;
     stroke: none;
+  }
+  .massfeld {
+    display: flex;
+    align-items: end;
+    gap: 0.5rem;
+    max-width: 34rem;
+    margin: 0.25rem auto 0.5rem;
+  }
+  .massfeld label {
+    flex: 1;
   }
   .legende {
     margin: 0 0 0.5rem;

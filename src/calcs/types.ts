@@ -61,6 +61,8 @@ export interface Mass {
   hinterlegt?: boolean
   /** kleinere Schrift für Nummern */
   klein?: boolean
+  /** Kennung des Eingabefelds, dessen Wert hier steht: die Zahl ist dann antippbar */
+  feld?: string
 }
 
 export interface Zeichnung {

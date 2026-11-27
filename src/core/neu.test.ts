@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gaubenSparrenliste, grat, sattelgaube, sparren, walmgaube } from './dach'
+import { gaubenSparrenliste, grat, gratAnfall, gratKerve, sattelgaube, sparren, walmgaube } from './dach'
 import { leseStueckliste, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
 import { mindestabstaendeStift, mindestholzdicke } from './verbindung'
@@ -228,5 +228,57 @@ describe('Laufmaße zum Antragen vom Bandmaß', () => {
     const vonLinks = laufmasse(ecke.positionen, 6, 300, 'links')
     vonLinks.forEach((x, i) => nah(x.achse + vonRechts[4 - i].achse, 300))
     expect(vonRechts.map((x) => x.kante)).toEqual([...vonRechts.map((x) => x.kante)].sort((a, b) => a - b))
+  })
+})
+
+describe('Gratsparren: Anfallspunkt und Kerve', () => {
+  const rad = (g: number) => (g * Math.PI) / 180
+  const faelle = [
+    { neigungHaupt: 45, neigungWalm: 45, grundmassHaupt: 400, breite: 14 },
+    { neigungHaupt: 40, neigungWalm: 50, grundmassHaupt: 400, breite: 12 },
+    { neigungHaupt: 28, neigungWalm: 55, grundmassHaupt: 520, breite: 10 },
+  ]
+  it('Backenschmiege: Riss der lotrechten Backe auf der geneigten Oberseite (Vektorrechnung)', () => {
+    for (const e of faelle) {
+      const g = grat(e)
+      const a = gratAnfall(e)
+      // Gratrichtung im Raum und waagerechte Querrichtung spannen die Oberseite auf
+      const w = g.grundmassWalm
+      const [ux, uy] = [w / g.gratGrund, e.grundmassHaupt / g.gratGrund]
+      const achse = [ux * Math.cos(rad(g.gratNeigung)), uy * Math.cos(rad(g.gratNeigung)), Math.sin(rad(g.gratNeigung))]
+      const quer = [uy, -ux, 0]
+      // Backe rechtwinklig zum First (liegt am Anfallssparren des Hauptdachs): lotrechte Ebene mit Grundrissrichtung y
+      // Rissrichtung in der Oberseite: s·achse + t·quer, deren Grundriss parallel zu (0,1) ist → x-Anteil = 0
+      const tZuS = -achse[0] / quer[0]
+      nah(Math.abs(Math.atan(tZuS)) * (180 / Math.PI), a.schmiegeHaupt)
+      // Backe parallel zum First: Grundrissrichtung x → y-Anteil = 0
+      nah(Math.abs(Math.atan(-achse[1] / quer[1])) * (180 / Math.PI), a.schmiegeWalm)
+      // Rücksprung: die Backe (x = 0 bzw. y = 0 durch den Anfallspunkt) trifft die Sparrenkante
+      const h2 = e.breite / 2
+      nah(a.rueckHaupt, (h2 * uy) / ux) // aus −s·ux + uy·h2 = 0
+      nah(a.rueckWalm, (h2 * ux) / uy)
+      nah(a.rueckHauptKante, a.rueckHaupt / Math.cos(rad(g.gratNeigung)))
+    }
+    // gleiche Neigung: beide Backen gleich, Rücksprung = halbe Breite
+    nah(gratAnfall(faelle[0]).rueckHaupt, 7)
+    nah(gratAnfall(faelle[0]).schmiegeHaupt, gratAnfall(faelle[0]).schmiegeWalm)
+  })
+  it('Kerve: Wange aus der Höhe der Sparrenunterkante über der Pfette (ohne die Abgratung zu benutzen)', () => {
+    for (const e of faelle) {
+      const g = grat(e)
+      const [hg, ob] = [24, 16]
+      const k = gratKerve(e, hg, ob)
+      const lot = hg / Math.cos(rad(g.gratNeigung))
+      // Unterkante über Pfettenoberkante an der Stelle t (Grundriss, ab Pfettenecke): ob + t·tan γ − lot
+      const unterkante = (t: number) => ob + t * Math.tan(rad(g.gratNeigung)) - lot
+      nah(k.haupt.wange, -unterkante(g.verstichHaupt))
+      nah(k.walm.wange, -unterkante(g.verstichWalm))
+      nah(k.wangeAchse, -unterkante(0))
+      // der Waagriss endet dort, wo die Unterkante die Pfettenoberkante erreicht
+      nah(unterkante(g.verstichHaupt + k.haupt.sattel), 0)
+      // an der Seitenfläche liegt die abgegratete Kante genau um das Obholz über der Pfette
+      nah(k.haupt.flaecheLot - k.haupt.wange, ob)
+    }
+    expect(() => gratKerve(faelle[0], 10, 30)).toThrow()
   })
 })

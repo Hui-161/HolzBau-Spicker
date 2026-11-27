@@ -35,10 +35,10 @@ export function zeichnungAlsSvg(z: Zeichnung, beschriftung: (m: Mass) => string)
       const text = beschriftung(m)
       const dreh = m.drehung ? ` transform="rotate(${m.drehung} ${m.x} ${m.y})"` : ''
       const grund = m.hinterlegt ? `<rect x="${m.x - text.length * 2.8 - 3}" y="${m.y - 6.5}" width="${text.length * 5.6 + 6}" height="13" rx="2" fill="#fff"${dreh}/>` : ''
-      return `${grund}<text x="${m.x}" y="${m.y}" text-anchor="${m.anker ?? 'middle'}" dominant-baseline="middle" font-family="Helvetica, Arial, sans-serif" font-size="${m.klein ? 8.5 : 10.5}" fill="#000" stroke="#fff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"${dreh}>${esc(text)}</text>`
+      return `${grund}<text x="${m.x}" y="${m.y}" text-anchor="${m.anker ?? 'middle'}" dominant-baseline="middle" font-family="Helvetica, Arial, sans-serif" font-size="${m.klein ? 8 : 9.5}" fill="#000" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"${dreh}>${esc(text)}</text>`
     })
     .join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${z.breite} ${z.hoehe}" width="${z.breite}" height="${z.hoehe}" style="color:#2f5d3a"><rect width="100%" height="100%" fill="#fff"/>${z.inhalt}${texte}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${z.breite} ${z.hoehe}" width="${z.breite}" height="${z.hoehe}"><rect width="100%" height="100%" fill="#fff"/>${z.inhalt}${texte}</svg>`
 }
 
 /** SVG in ein PNG wandeln (für das PDF). */
