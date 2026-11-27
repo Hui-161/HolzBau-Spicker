@@ -58,4 +58,34 @@ describe('Vorbemessung nach Faustformel', () => {
       expect(r.teiler).toBeLessThanOrEqual(24)
     }
   })
+  it('rechnet Dreieck-Streben-Binder als Bereich mit Obergrenze', () => {
+    const r = vorbemessung('dreieckStrebenBinder', 600)
+    expect(r.hoehe).toBeCloseTo(30, 9)
+    expect(r.hoeheBis).toBeCloseTo(40, 9)
+    expect(r.ausserhalb).toBe(false)
+    const g = vorbemessung('dreieckStrebenBinder', 1200)
+    expect(g.hoehe).toBeCloseTo(60, 9)
+    expect(g.hoeheBis).toBe(75)
+    expect(g.ausserhalb).toBe(true)
+  })
+  it('rechnet Brettschichtholz-Einfeldträger mit l/17', () => {
+    expect(vorbemessung('bshEinfeld', 1700).hoehe).toBeCloseTo(100, 9)
+    expect(vorbemessung('bshEinfeld', 1700).ausserhalb).toBe(false)
+    expect(vorbemessung('bshEinfeld', 800).ausserhalb).toBe(true)
+  })
+  it('gibt beim Sparren im Pfettendach den Grat- oder Kehlsparren mit 1,5-facher Höhe an', () => {
+    expect(vorbemessung('sparrenPfettendach', 480).gratHoehe).toBeCloseTo(30, 9)
+    expect(vorbemessung('sparrenSparrendach', 480).gratHoehe).toBeUndefined()
+  })
+  it('rechnet mit der ideellen Stützweite je Trägerart', () => {
+    const u = undefined
+    expect(vorbemessung('decke', 500, u, u, u, u, 'einfeld').hoehe).toBeCloseTo(25, 9)
+    expect(vorbemessung('decke', 500, u, u, u, u, 'endfeld09').hoehe).toBeCloseTo(22.5, 9)
+    expect(vorbemessung('decke', 500, u, u, u, u, 'endfeld08').hoehe).toBeCloseTo(20, 9)
+    expect(vorbemessung('decke', 500, u, u, u, u, 'mittelfeld')).toMatchObject({ faktor: 0.6, ideell: 300, hoehe: 15 })
+    expect(vorbemessung('frei', 100, 24, u, u, u, 'kragarm').hoehe).toBeCloseTo(10, 9)
+    // bei Sparren, Pfetten und Bindern bleibt die Trägerart ohne Wirkung
+    expect(vorbemessung('sparrenPfettendach', 480, u, u, u, u, 'mittelfeld')).toMatchObject({ faktor: 1, hoehe: 20 })
+    expect(vorbemessung('bshEinfeld', 1700, u, u, u, u, 'mittelfeld').faktor).toBe(1)
+  })
 })
