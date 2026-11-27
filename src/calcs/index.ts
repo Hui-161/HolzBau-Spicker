@@ -54,6 +54,7 @@ export const RECHNER: Rechner[] = [
   /* ============ Dach ============ */
   {
     id: 'sparren',
+    beispiel: { g: 400, a: 35, ue: 50, h: 18, k: 3 },
     titel: 'Sparren',
     gruppe: 'Dach',
     kurz: 'Länge, Kerve, Obholz, Schnitte',
@@ -159,6 +160,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'grat',
+    beispiel: { ah: 40, aw: 50, x: 400, b: 12, th: 90, tw: 90 },
     // Neigung, Grundmaß, Obholz und Traufabschnitt des Hauptdachs stehen schon im Sparren-Rechner
     uebernahme: {
       von: 'sparren',
@@ -287,6 +289,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'kehlbalken',
+    beispiel: { w: 800, a: 45, h: 150, hk: 16 },
     titel: 'Kehlbalken / Zange',
     gruppe: 'Dach',
     kurz: 'Länge und Abschnitt zwischen den Sparren',
@@ -322,6 +325,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'lattung',
+    beispiel: { sl: 600, t: 32, f: 4, min: 33, max: 36 },
     titel: 'Lattung / Ziegel',
     gruppe: 'Dach',
     kurz: 'Lattweite und Reihen aus der Decklänge',
@@ -390,6 +394,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'pultdach',
+    beispiel: { b: 400, a: 10, ut: 30, uh: 20 },
     titel: 'Pultdach',
     gruppe: 'Dach',
     kurz: 'Sparrenlänge und Höhenunterschied',
@@ -457,6 +462,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'zeltdach',
+    beispiel: { n: 4, a: 800, w: 40 },
     titel: 'Zelt- und Turmdach',
     gruppe: 'Dach',
     kurz: 'Grate und Fläche über dem Vieleck',
@@ -492,6 +498,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'gaube',
+    beispiel: { ah: 45, ag: 15, h: 120 },
     titel: 'Schleppgaube',
     gruppe: 'Dach',
     kurz: 'Gaubensparren und Anschluss am Hauptdach',
@@ -524,6 +531,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'sattelgaube',
+    beispiel: { ah: 45, ag: 45, b: 200, h: 100, aw: 45, gb: 0 },
     titel: 'Sattel- und Walmgaube',
     gruppe: 'Dach',
     kurz: 'First, Kehle, Sparren und Walm der Gaube',
@@ -598,6 +606,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'dachfenster',
+    beispiel: { fb: 114, fh: 118, ls: 2, lh: 4, e: 80, s: 8 },
     titel: 'Wechsel am Dachfenster',
     gruppe: 'Dach',
     kurz: 'Passt das Fenster ins Sparrenfeld?',
@@ -689,6 +698,7 @@ export const RECHNER: Rechner[] = [
   /* ============ Einteilung ============ */
   {
     id: 'einteilung',
+    beispiel: { b: 300, t: 6, amax: 62.5, n: 5 },
     titel: 'Einteilung',
     gruppe: 'Einteilung',
     kurz: 'Stäbe, Latten, Pfosten gleichmäßig verteilen',
@@ -739,6 +749,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'sparreneinteilung',
+    beispiel: { l: 1000, s: 8, r: 0, a: 80 },
     titel: 'Sparreneinteilung',
     gruppe: 'Einteilung',
     kurz: 'Achsmaß und Anriss auf der Pfette',
@@ -1016,6 +1027,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'stern',
+    beispiel: { n: 5, d: 200, w: 36 },
     titel: 'Holzstern',
     gruppe: 'Sonstiges',
     kurz: 'Stablänge und Gehrungen für Sterne',
@@ -1099,6 +1111,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'abstaende',
+    beispiel: { d: 4, w: 0 },
     titel: 'Abstände Verbindungsmittel',
     gruppe: 'Sonstiges',
     kurz: 'Mindestabstände nach Eurocode 5',

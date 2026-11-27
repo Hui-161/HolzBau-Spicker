@@ -2,6 +2,7 @@
   import type { Art, Ergebnis, Feld, Liste, Mass, Rechner, Werte, Zeichnung } from '../calcs/types'
   import { rechnerNachId } from '../calcs'
   import { EingabeFehler } from '../core/trig'
+  import { vorschauAus } from './vorschau'
   import { werteAus } from './werte'
   import { t, tSkizze } from './sprache.svelte'
   import { aktivesProjekt, einheitVon, formatiere, JE_CM, leseZahl, schalteFavorit, sichere, zustand } from './zustand.svelte'
@@ -20,6 +21,9 @@
   const istText = (f: Feld): boolean => f.art === 'select' || f.art === 'liste'
 
   const werte = $derived<Werte>(Object.fromEntries(rechner.felder.map((f) => [f.id, istText(f) ? (roh[f.id] ?? '') : leseZahl(roh[f.id] ?? '')])))
+  // Rechner mit eigener Eingabezeichnung oder Beispielwerten: eine Zeichnung oben statt der Skizze
+  // svelte-ignore state_referenced_locally
+  const bildOben = !!(rechner.vorschau || rechner.beispiel)
   const sichtbar = $derived(rechner.felder.filter((f) => !f.wenn || f.wenn(werte)))
   const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze))
   const ungueltig = (f: Feld): boolean => !istText(f) && (roh[f.id] ?? '').trim() !== '' && Number.isNaN(werte[f.id])
@@ -123,7 +127,9 @@
   /** Tabellenzelle: feste Wörter übersetzen, alles andere formatieren */
   const zelle = (c: number | string | number[], art: Art): string => (art === 'wort' && typeof c === 'string' ? t(c) : formatiere(c, art))
 
-  const massText = (m: Mass): string => (m.text ? t(m.text) : `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`)
+  // leeres Feld in der Eingabezeichnung: Feldname ohne Zusatz in Klammern
+  const kuerze = (name: string): string => (name.length > 15 ? `${name.slice(0, 14)}…` : name)
+  const massText = (m: Mass): string => (m.platzhalter ? kuerze(t(m.platzhalter).split(' (')[0]) : m.text ? t(m.text) : `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`)
 
   // Maß in der Zeichnung angetippt: Eingabefeld direkt unter dieser Zeichnung
   let offenesMass = $state<{ bild: number; feld: string } | null>(null)
@@ -268,7 +274,7 @@
   {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.berechnet && m.feld && feldVon(m.feld))}{' · '}{t('blau ist eingegeben, grau berechnet oder offen – antippen oder unten eintragen')}{:else if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
 {/snippet}
 
-{#if rechner.skizze && !rechner.vorschau}
+{#if rechner.skizze && !bildOben}
   {#if waehlbar}
     <!-- die Seiten selbst sind fokussierbar (tabindex im Effekt), die Gruppe nicht -->
     <!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -279,9 +285,9 @@
   {/if}
 {/if}
 
-{#if rechner.vorschau}
+{#if bildOben}
   <!-- eine Zeichnung statt Skizze: sie zeigt den Stand der Eingaben und folgt jeder Änderung sofort -->
-  {@const oben = ('ergebnis' in stand ? stand.ergebnis.zeichnung : undefined) ?? rechner.vorschau(werte)}
+  {@const oben = ('ergebnis' in stand ? stand.ergebnis.zeichnung : undefined) ?? (rechner.vorschau ? rechner.vorschau(werte) : vorschauAus(rechner, werte, JE_CM[zustand.einheit]))}
   {#if oben}<div class="bild-oben" data-sprung="z0">{@render bild(oben, 0)}</div>{/if}
   {#if 'fehler' in stand}<p class="fehler oben" role="alert">{t(stand.fehler)}</p>{/if}
 {/if}
@@ -331,14 +337,14 @@
 
 <section class="ergebnis" aria-live="polite">
   {#if 'fehler' in stand}
-    {#if !rechner.vorschau}<p class="fehler">{t(stand.fehler)}</p>{/if}
+    {#if !bildOben}<p class="fehler">{t(stand.fehler)}</p>{/if}
   {:else if 'offen' in stand}
     <p class="offen">{t('Werte eingeben – das Ergebnis erscheint sofort.')}</p>
   {:else}
     {#each stand.ergebnis.hinweise ?? [] as h (h)}
       <p class="fehler">{t(h)}</p>
     {/each}
-    {#if stand.ergebnis.zeichnung && !rechner.vorschau}
+    {#if stand.ergebnis.zeichnung && !bildOben}
       <div data-sprung="z0">{@render bild(stand.ergebnis.zeichnung, 0)}</div>
     {/if}
     {#each stand.ergebnis.details ?? [] as d, i (d.titel)}

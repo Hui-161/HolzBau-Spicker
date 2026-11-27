@@ -118,11 +118,11 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   expect(text).toContain('692,8') // Gratlänge 400·√3
   expect(text).toContain('35,26') // Gratneigung
   // Übersicht und fünf Details: Seitenansicht, Gratfuß, Querschnitt, Hexenschnitt, Anfallspunkt
-  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(6)
+  await expect(page.locator('svg.zeichnung')).toHaveCount(6)
   // mit Sparrenhöhe und Obholz kommt die Kerve je Seite dazu
   await felder.nth(7).fill('24')
   await felder.nth(8).fill('16')
-  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(8)
+  await expect(page.locator('svg.zeichnung')).toHaveCount(8)
   await expect(page.locator('.ergebnis')).toContainText('Kerve: Wange lotrecht')
   await expect(page.locator('.ergebnis h2').first()).toContainText('Detail 1')
   await page.goto('./#/dreieck')
@@ -165,7 +165,7 @@ test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {
   await page.goto('./#/sparren')
   const felder = page.locator('form:not(.massfeld) input')
   for (const [n, wert] of BEISPIELE.sparren.entries()) await felder.nth(n).fill(wert)
-  await page.locator('.ergebnis text.tippbar', { hasText: '400,0' }).first().click()
+  await page.locator('svg.zeichnung text.tippbar', { hasText: '400,0' }).first().click()
   await page.locator('.massfeld input').fill('450')
   // erst nach „Fertig“ wird übernommen
   await expect(felder.nth(0)).toHaveValue('400')

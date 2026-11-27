@@ -73,6 +73,8 @@ export interface Mass {
   feld?: string
   /** antippbar, aber nicht eingegeben: der Wert ist berechnet oder noch offen */
   berechnet?: boolean
+  /** statt einer Zahl den Namen des Felds zeigen (Bezeichnung des Felds, wird übersetzt) – für noch leere Felder */
+  platzhalter?: string
 }
 
 export interface Zeichnung {
@@ -120,6 +122,11 @@ export interface Rechner {
    * werden geleert und zeigen den berechneten Wert. So widersprechen sich Eingaben nie.
    */
   loese?: { felder: string[]; anzahl: number }
+  /**
+   * Beispielwerte je Feld (Längen in cm): Daraus entsteht die Zeichnung, solange Eingaben fehlen.
+   * Sie ersetzt die Skizze und steht über der Feldliste.
+   */
+  beispiel?: Record<string, number>
   /** Zeichnung zum Eintragen der Werte, solange noch kein Ergebnis da ist (ersetzt Skizze und Formular) */
   vorschau?: (w: Werte) => Zeichnung | undefined
   /** eigene Ansicht statt Felder + Ergebnis (z. B. Sensor) */
