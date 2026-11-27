@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gaubenSparrenliste, grat, sattelgaube, walmgaube } from './dach'
+import { gaubenSparrenliste, grat, sattelgaube, sparren, walmgaube } from './dach'
 import { leseStueckliste, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
 import { mindestabstaendeStift, mindestholzdicke } from './verbindung'
@@ -173,5 +173,36 @@ describe('Sparrenliste der Gaube', () => {
       const innen = 120 - z.lage * t52 // aus Gaubendach = Walm
       nah(z.laenge, (aussen - innen) * Math.SQRT2)
     }
+  })
+})
+
+describe('Anriss am Sparren', () => {
+  it('Lagen entlang der Kante stimmen mit den Koordinaten der Risse überein', () => {
+    const e = { grundmass: 400, neigung: 35, ueberstand: 50, sparrenhoehe: 18, kerve: 3 }
+    const r = sparren(e)
+    const a = (35 * Math.PI) / 180
+    // Richtung der Sparrenkante und der Senkelrisse im Schnitt (x waagerecht, y lotrecht)
+    const entlang = (x: number) => x / Math.cos(a) // waagerechter Abstand → Länge auf der Kante
+    nah(r.anriss.kerveSenkel, entlang(50))
+    nah(r.anriss.first, entlang(450))
+    nah(r.anriss.first, r.laengeGesamt)
+    // Kerve: Ecke bei (0,0); Unterkante liegt um das Kervenlot tiefer: y = x·tan a − k/cos a
+    const kLot = 3 / Math.cos(a)
+    const xEnde = kLot / Math.tan(a) // Waagriss y = 0 trifft die Unterkante
+    nah(r.anriss.kerveEnde - r.anriss.kerveSenkel, entlang(xEnde))
+    nah(xEnde, r.kervenSattel)
+    // Obholz: Oberkante über der Kervenecke, lotrecht
+    nah(r.anriss.obholz, 18 / Math.cos(a) - kLot)
+    nah(r.anriss.obholz, r.obholz)
+  })
+  it('Winkel und Versatz der Risse', () => {
+    const r = sparren({ grundmass: 400, neigung: 35, ueberstand: 0, sparrenhoehe: 18, kerve: 0 })
+    nah(r.anriss.winkelSenkel, 55)
+    nah(r.anriss.winkelWaage, 35)
+    // Senkelriss: läuft über die Sparrenhöhe um h·tan α entlang der Kante weiter
+    nah(r.anriss.versatzSenkel, 18 * Math.tan((35 * Math.PI) / 180))
+    nah(Math.atan(18 / r.anriss.versatzSenkel) * (180 / Math.PI), r.anriss.winkelSenkel)
+    nah(Math.atan(18 / r.anriss.versatzWaage) * (180 / Math.PI), r.anriss.winkelWaage)
+    nah(r.anriss.kerveEnde, 0)
   })
 })

@@ -4,7 +4,8 @@
  */
 
 /** len = Länge in der gewählten Einheit · area = Fläche dazu · ang = Grad */
-export type Art = 'len' | 'area' | 'ang' | 'num' | 'int' | 'text'
+/** wort = fester Text, der übersetzt wird; text = Eingabe des Nutzers, bleibt wie sie ist */
+export type Art = 'len' | 'area' | 'ang' | 'num' | 'int' | 'text' | 'wort'
 
 export interface Feld {
   id: string

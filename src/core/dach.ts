@@ -37,6 +37,27 @@ export function sparren(e: SparrenEingabe) {
     kervenSattel: e.kerve / s,
     /** lotrechte Kervenwange */
     kervenLot: e.kerve / c,
+    /**
+     * Anriss am Sparren. Alle Lagen entlang der Sparrenkante gemessen, ab dem Senkelriss an der Traufe.
+     * Weil alle Senkelrisse parallel sind, gelten die Maße an Ober- und Unterkante gleich –
+     * jeweils ab dem Punkt, an dem der Traufsenkel diese Kante trifft.
+     */
+    anriss: {
+      /** Senkelriss durch die Kervenecke (Außenkante Fußpfette) */
+      kerveSenkel: laengeUeberstand,
+      /** an der Unterkante: dort läuft der Waagriss der Kerve aus */
+      kerveEnde: laengeUeberstand + e.kerve / (s * c),
+      /** Senkelriss am First */
+      first: laengeGrund + laengeUeberstand,
+      /** auf dem Kervensenkel von der Oberkante herunter bis zur Kervenecke */
+      obholz: (e.sparrenhoehe - e.kerve) / c,
+      /** Winkel der Risse zur Sparrenkante */
+      winkelSenkel: 90 - e.neigung,
+      winkelWaage: e.neigung,
+      /** Versatz eines Risses über die Sparrenhöhe, entlang der Kante gemessen (Anriss ohne Winkel) */
+      versatzSenkel: e.sparrenhoehe * tan(e.neigung),
+      versatzWaage: e.sparrenhoehe / tan(e.neigung),
+    },
   }
 }
 

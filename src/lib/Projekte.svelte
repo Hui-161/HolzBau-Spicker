@@ -118,7 +118,7 @@
             listen: [...(e.liste ? [e.liste] : []), ...(e.listen ?? [])].map((l) => ({
               titel: t(l.titel),
               kopf: l.kopf.map((k, i) => `${t(k)}${l.arten[i] === 'len' ? ` (${zustand.einheit})` : ''}`),
-              zeilen: l.zeilen.map((z) => z.map((c, i) => formatiere(c, l.arten[i]))),
+              zeilen: l.zeilen.map((z) => z.map((c, i) => (l.arten[i] === 'wort' && typeof c === 'string' ? t(c) : formatiere(c, l.arten[i])))),
             })),
           },
         ]

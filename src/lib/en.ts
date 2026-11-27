@@ -84,8 +84,8 @@ export const EN: Record<string, string> = {
   // Sparren
   Sparren: 'Rafter',
   'Länge, Kerve, Obholz, Schnitte': 'Length, birdsmouth, HAP, cuts',
-  'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen.':
-    'Measure run and overhang horizontally from the outer edge of the wall plate. The birdsmouth depth is measured square to the underside of the rafter.',
+  'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen. Anriss: Alle Lagen gelten entlang der Sparrenkante ab dem Senkelriss an der Traufe, an Ober- und Unterkante gleich. Auf dem Kervensenkel das Obholz von der Oberkante herunter messen, das ergibt die Kervenecke; von dort läuft der Waagriss zur Unterkante. Am Alphawinkel die Dachneigung einstellen: Der Waagriss liegt im Winkel der Dachneigung zur Sparrenkante, der Senkelriss rechtwinklig dazu. Die Skala des eigenen Winkels vorher an einem bekannten Riss prüfen.':
+    'Measure run and overhang horizontally from the outer edge of the wall plate. The birdsmouth depth is measured square to the underside of the rafter. Marking: all positions are measured along the rafter edge from the plumb line at the eaves, the same on the top and bottom edge. On the birdsmouth plumb line, measure the height above plate down from the top edge to find the birdsmouth corner; the level line runs from there to the underside. Set the roof pitch on the adjustable square: the level line lies at the roof pitch to the rafter edge, the plumb line square to it. Check the scale of your own square against a known line first.',
   Grundmaß: 'Run',
   'Außenkante Fußpfette bis Firstmitte': 'outer edge of wall plate to centre of ridge',
   Dachneigung: 'Roof pitch',
@@ -638,4 +638,16 @@ export const EN: Record<string, string> = {
   'Das Foto konnte nicht gespeichert werden.': 'The photo could not be saved.',
   'Fotos können in diesem Browser nicht gespeichert werden.': 'Photos cannot be stored in this browser.',
   'Daten wiederhergestellt, aber die Fotos konnten nicht gespeichert werden.': 'Data restored, but the photos could not be saved.',
+  // Anriss am Sparren
+  'Anriss: Senkelriss zur Sparrenkante': 'Marking: plumb line to rafter edge',
+  'Anriss: Waagriss zur Sparrenkante': 'Marking: level line to rafter edge',
+  'Versatz Senkelriss über die Sparrenhöhe': 'Plumb line offset across the rafter depth',
+  'Versatz Waagriss über die Sparrenhöhe': 'Level line offset across the rafter depth',
+  'Anriss am Sparren, ab Senkelriss Traufe entlang der Kante': 'Marks on the rafter, from the eaves plumb line along the edge',
+  Riss: 'Line',
+  Lage: 'Position',
+  'Traufe: Senkelriss': 'Eaves: plumb line',
+  'Kerve: Senkelriss an Außenkante Fußpfette': 'Birdsmouth: plumb line at outer edge of wall plate',
+  'Kerve: Ende des Waagrisses an der Unterkante': 'Birdsmouth: end of level line at the underside',
+  'First: Senkelriss': 'Ridge: plumb line',
 }

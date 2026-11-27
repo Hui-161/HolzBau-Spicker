@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Ergebnis, Feld, Liste, Mass, Rechner, Werte } from '../calcs/types'
+  import type { Art, Ergebnis, Feld, Liste, Mass, Rechner, Werte } from '../calcs/types'
   import { EingabeFehler } from '../core/trig'
   import { t, tSkizze } from './sprache.svelte'
   import { aktivesProjekt, einheitVon, formatiere, JE_CM, leseZahl, schalteFavorit, sichere, zustand } from './zustand.svelte'
@@ -61,7 +61,7 @@
       ...sichtbar.filter((f) => (roh[f.id] ?? '') !== '').map((f) => `${t(f.label)}: ${f.art === 'select' ? t(f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '') : `${roh[f.id]} ${einheitVon(f.art, f.einheit)}`}`),
       '—',
       ...e.ausgaben.map((a) => `${t(a.label)}: ${formatiere(a.wert, a.art, a.stellen)} ${einheitVon(a.art, a.einheit)}`),
-      ...listen(e).flatMap((l) => [t(l.titel), ...l.zeilen.map((z) => z.map((c, i) => formatiere(c, l.arten[i])).join('\t'))]),
+      ...listen(e).flatMap((l) => [t(l.titel), ...l.zeilen.map((z) => z.map((c, i) => zelle(c, l.arten[i])).join('\t'))]),
     ].join('\n')
 
   async function kopiere(e: Ergebnis) {
@@ -73,6 +73,9 @@
       // Zwischenablage gesperrt → nichts tun
     }
   }
+
+  /** Tabellenzelle: feste Wörter übersetzen, alles andere formatieren */
+  const zelle = (c: number | string | number[], art: Art): string => (art === 'wort' && typeof c === 'string' ? t(c) : formatiere(c, art))
 
   const massText = (m: Mass): string => `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`
 
@@ -156,7 +159,7 @@
         </thead>
         <tbody>
           {#each l.zeilen as z, n (n)}
-            <tr>{#each z as c, i (i)}<td>{formatiere(c, l.arten[i])}</td>{/each}</tr>
+            <tr>{#each z as c, i (i)}<td class:wort={l.arten[i] === 'wort'}>{zelle(c, l.arten[i])}</td>{/each}</tr>
           {/each}
         </tbody>
       </table>
@@ -379,6 +382,10 @@
   td:first-child {
     text-align: left;
     color: var(--leise);
+  }
+  td.wort {
+    text-align: left;
+    white-space: normal;
   }
   th {
     font-size: 0.85rem;

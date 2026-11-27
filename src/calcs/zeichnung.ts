@@ -107,14 +107,25 @@ export function zeichneSparren(grundmass: number, ueberstand: number, neigungGra
   // Dachüberstand: waagerecht unter dem Sparrenfuß, bis zur Außenkante Fußpfette
   const fuss = Math.min(unten(-ueberstand), -pf)
   const mitUeberstand = ueberstand > 0
+  // Nummern der Risse wie in der Anrissliste: Traufe, Kervensenkel, Ende des Waagrisses, First
+  const kerveOben: Punkt = [0, unten(0) + lot]
+  const rissNummern: Mass[] = []
+  let nr = 0
+  const nummer = (p: Punkt, dy: number): void => void rissNummern.push(f.anPunkt(p, ++nr, 0, dy, { art: 'int', klein: true, hinterlegt: true }))
+  nummer(obenLinks, -8)
+  if (ueberstand > 0 || kerve > 0) nummer(kerveOben, -8)
+  if (kerve > 0) nummer([kSattel, 0], 9)
+  nummer(obenRechts, -8)
+  const kerveSenkel = ueberstand > 0 || kerve > 0 ? f.zug([[0, 0], kerveOben], HILF) : ''
   return {
     breite: BREITE,
     hoehe: f.hoehe,
-    inhalt: f.zug(hilf, HILF) + f.zug(pfette, HILF, true) + (mitUeberstand ? f.zug([[-ueberstand, unten(-ueberstand)], [-ueberstand, fuss], [0, fuss]], HILF) : '') + f.zug(sparren, FLAECHE, true),
+    inhalt: kerveSenkel + f.zug(hilf, HILF) + f.zug(pfette, HILF, true) + (mitUeberstand ? f.zug([[-ueberstand, unten(-ueberstand)], [-ueberstand, fuss], [0, fuss]], HILF) : '') + f.zug(sparren, FLAECHE, true),
     masse: [
       ...(mitUeberstand ? [f.anPunkt([0, fuss], ueberstand, -3, 10, { anker: 'end' as const })] : []),
       f.anStrecke([0, 0], [grundmass, 0], grundmass, -10),
       f.anStrecke(obenLinks, obenRechts, (grundmass + ueberstand) / Math.cos(rad), 9),
+      ...rissNummern,
       f.anPunkt([grundmass, (grundmass * t) / 2], grundmass * t, 5, 0, { anker: 'start' }),
       // steiles Dach: Winkel im Zwickel am Fuß; flaches Dach: darunter, sonst läge er auf dem Sparren
       // Neigung im Dreieck, dort wo zwischen Grundlinie und Sparren Platz ist

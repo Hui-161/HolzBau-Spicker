@@ -29,7 +29,7 @@ export const RECHNER: Rechner[] = [
     titel: 'Sparren',
     gruppe: 'Dach',
     kurz: 'Länge, Kerve, Obholz, Schnitte',
-    info: 'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen.',
+    info: 'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen. Anriss: Alle Lagen gelten entlang der Sparrenkante ab dem Senkelriss an der Traufe, an Ober- und Unterkante gleich. Auf dem Kervensenkel das Obholz von der Oberkante herunter messen, das ergibt die Kervenecke; von dort läuft der Waagriss zur Unterkante. Am Alphawinkel die Dachneigung einstellen: Der Waagriss liegt im Winkel der Dachneigung zur Sparrenkante, der Senkelriss rechtwinklig dazu. Die Skala des eigenen Winkels vorher an einem bekannten Riss prüfen.',
     skizze: `<path ${S} d="M20 100 L150 22 L150 100"/><path ${D} d="M20 100 H150"/><text ${T} x="72" y="114">Grundmaß</text><text ${T} x="156" y="66">Firsthöhe</text><text ${T} x="40" y="50">Sparrenlänge</text><text ${T} x="44" y="96">α</text>`,
     felder: [
       { id: 'g', label: 'Grundmaß', art: 'len', hinweis: 'Außenkante Fußpfette bis Firstmitte' },
@@ -52,7 +52,22 @@ export const RECHNER: Rechner[] = [
           L('Obholz lotrecht', r.obholz),
           L('Kerve: Auflage waagerecht', r.kervenSattel),
           L('Kerve: Wange lotrecht', r.kervenLot),
+          W('Anriss: Senkelriss zur Sparrenkante', r.anriss.winkelSenkel, true),
+          W('Anriss: Waagriss zur Sparrenkante', r.anriss.winkelWaage, true),
+          L('Versatz Senkelriss über die Sparrenhöhe', r.anriss.versatzSenkel),
+          L('Versatz Waagriss über die Sparrenhöhe', r.anriss.versatzWaage),
         ],
+        liste: {
+          titel: 'Anriss am Sparren, ab Senkelriss Traufe entlang der Kante',
+          kopf: ['Nr.', 'Riss', 'Lage'],
+          arten: ['int', 'wort', 'len'],
+          zeilen: [
+            [1, 'Traufe: Senkelriss', 0],
+            ...(zahl(w, 'ue') > 0 || zahl(w, 'k') > 0 ? [[2, 'Kerve: Senkelriss an Außenkante Fußpfette', r.anriss.kerveSenkel]] : []),
+            ...(zahl(w, 'k') > 0 ? [[3, 'Kerve: Ende des Waagrisses an der Unterkante', r.anriss.kerveEnde]] : []),
+            [4, 'First: Senkelriss', r.anriss.first],
+          ].map((z, i) => [i + 1, z[1], z[2]]),
+        },
       }
     },
   },
@@ -329,7 +344,7 @@ export const RECHNER: Rechner[] = [
                 {
                   titel: 'Sparren je Gaubenseite',
                   kopf: ['Nr.', 'ab Front', 'Länge', 'endet an'],
-                  arten: ['int', 'len', 'len', 'text'] as Liste['arten'],
+                  arten: ['int', 'len', 'len', 'wort'] as Liste['arten'],
                   zeilen: gaubenSparrenliste(eingabe, raster, wg?.walmGrund ?? 0).map((z, i) => [i + 1, z.lage, z.laenge, ENDET[z.art]]),
                 },
               ]
