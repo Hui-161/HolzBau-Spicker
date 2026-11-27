@@ -205,6 +205,27 @@ test('Gratsparren übernimmt Werte aus dem Sparren, Zuschnitt stößt überlange
   expect(fehler).toEqual([])
 })
 
+test('Zurück zur Übersicht landet an der verlassenen Stelle', async ({ page }) => {
+  await mitSprache(page, 'de')
+  await page.setViewportSize({ width: 400, height: 600 })
+  await page.goto('./')
+  const treppe = page.locator('main li a[href="#/treppe"]')
+  await treppe.scrollIntoViewIfNeeded()
+  const vorher = await page.evaluate(() => scrollY)
+  expect(vorher).toBeGreaterThan(200)
+  await treppe.click()
+  await expect(page.locator('form[data-sprung]')).toBeVisible()
+  expect(await page.evaluate(() => scrollY)).toBe(0)
+  // eigener Auftritt statt des berechneten
+  const felder = page.locator('form[data-sprung] input')
+  await felder.nth(0).fill('280')
+  await felder.nth(2).fill('27')
+  await expect(page.locator('.ergebnis dl')).toContainText('405,0') // Lauflänge 15 × 27
+  await page.locator('header a.zurueck').click()
+  await expect(treppe).toBeVisible()
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(vorher)
+})
+
 test('Schlagwortsuche findet abweichende Namen und Tippfehler', async ({ page }) => {
   await mitSprache(page, 'de')
   await page.goto('./')

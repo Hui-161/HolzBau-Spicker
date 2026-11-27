@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte'
   import { RECHNER, rechnerNachId } from './calcs'
   import { VORLAGEN } from './core/dokumente'
   import Assistent from './lib/Assistent.svelte'
@@ -41,18 +42,24 @@
       .slice(0, 10)
   )
 
+  // Beim Zurückkehren zur Übersicht wieder dort stehen, wo man sie verlassen hat;
+  // jede Funktion beginnt dagegen oben.
+  let startScroll = 0
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+  async function wechsle() {
+    if (route === '') startScroll = scrollY
+    route = ausHash()
+    await tick()
+    scrollTo(0, route === '' ? startScroll : 0)
+  }
+
   function setzeEinheit(e: Einheit) {
     zustand.einheit = e
     sichere()
   }
 </script>
 
-<svelte:window
-  onhashchange={() => {
-    route = ausHash()
-    scrollTo(0, 0)
-  }}
-/>
+<svelte:window onhashchange={wechsle} />
 
 <header>
   {#if titel}

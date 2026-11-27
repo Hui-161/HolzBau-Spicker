@@ -2,7 +2,8 @@ import { atan, pruefe } from './trig'
 
 /* ---------- Treppe (Schrittmaßregel, alle Maße in cm) ---------- */
 
-export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittmassCm = 63) {
+/** auftrittCm: fester Auftritt statt des Werts aus der Schrittmaßregel */
+export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittmassCm = 63, auftrittCm?: number) {
   pruefe(geschosshoeheCm > 0, 'Geschosshöhe muss größer als 0 sein.')
   pruefe(wunschSteigungCm > 0, 'Steigung muss größer als 0 sein.')
   // die Anzahl, deren Steigung dem Wunsch am nächsten kommt
@@ -10,7 +11,8 @@ export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittma
   const naeher = (n: number): number => Math.abs(geschosshoeheCm / n - wunschSteigungCm)
   const steigungen = naeher(unten + 1) < naeher(unten) ? unten + 1 : unten
   const steigung = geschosshoeheCm / steigungen
-  const auftritt = schrittmassCm - 2 * steigung
+  if (auftrittCm !== undefined) pruefe(auftrittCm > 0, 'Auftritt muss größer als 0 sein.')
+  const auftritt = auftrittCm ?? schrittmassCm - 2 * steigung
   pruefe(auftritt > 0, 'Mit dieser Steigung ergibt sich kein Auftritt.')
   return {
     steigungen,
@@ -19,6 +21,8 @@ export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittma
     auftritt,
     lauflaenge: (steigungen - 1) * auftritt,
     neigung: atan(steigung / auftritt),
+    /** Schrittmaß: 2 × Steigung + Auftritt; bequem sind etwa 59 bis 65 cm */
+    schrittmass: 2 * steigung + auftritt,
     /** Bequemlichkeitsregel: a − s ≈ 12 cm */
     bequem: auftritt - steigung,
     /** Sicherheitsregel: a + s ≈ 46 cm */

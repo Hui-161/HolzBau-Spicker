@@ -1015,13 +1015,16 @@ export const RECHNER: Rechner[] = [
     titel: 'Treppe',
     gruppe: 'Sonstiges',
     kurz: 'Steigung und Auftritt nach Schrittmaß',
-    info: 'Schrittmaßregel: 2 × Steigung + Auftritt = 63 cm. Bequem ist eine Treppe bei Auftritt − Steigung ≈ 12 cm, sicher bei Auftritt + Steigung ≈ 46 cm. Bauordnung und DIN 18065 gehen vor.',
+    info: 'Ohne eigenen Auftritt wird er aus der Schrittmaßregel berechnet; mit eigenem Auftritt wird das Schrittmaß ausgewiesen. Schrittmaßregel: 2 × Steigung + Auftritt = 63 cm. Bequem ist eine Treppe bei Auftritt − Steigung ≈ 12 cm, sicher bei Auftritt + Steigung ≈ 46 cm. Bauordnung und DIN 18065 gehen vor.',
     felder: [
       { id: 'h', label: 'Geschosshöhe (OKFF bis OKFF)', art: 'len' },
       { id: 's', label: 'Wunsch-Steigung', art: 'len', optional: true, hinweis: 'leer = 18 cm' },
+      { id: 'au', label: 'Auftritt', art: 'len', optional: true, hinweis: 'leer = aus der Schrittmaßregel berechnet' },
     ],
     rechne: (w, k) => {
-      const r = treppe(zahl(w, 'h') / k.jeCm, (opt(w, 's') ?? 18 * k.jeCm) / k.jeCm)
+      const au = opt(w, 'au')
+      const r = treppe(zahl(w, 'h') / k.jeCm, (opt(w, 's') ?? 18 * k.jeCm) / k.jeCm, 63, au === undefined ? undefined : au / k.jeCm)
+      const schrittAus = r.schrittmass < 59 - 1e-9 || r.schrittmass > 65 + 1e-9
       const cm = (label: string, wert: number, wichtig = false): Ausgabe => L(label, wert * k.jeCm, wichtig)
       return {
         ausgaben: [
@@ -1031,10 +1034,14 @@ export const RECHNER: Rechner[] = [
           { label: 'Anzahl Auftritte', wert: r.auftritte, art: 'int' },
           cm('Lauflänge', r.lauflaenge),
           W('Treppenneigung', r.neigung),
+          cm('Schrittmaß: 2 × Steigung + Auftritt', r.schrittmass),
           cm('Bequemlichkeit: Auftritt − Steigung', r.bequem),
           cm('Sicherheit: Auftritt + Steigung', r.sicher),
         ],
-        hinweise: r.steigung > 20 || r.auftritt < 23 ? ['Steigung über 20 cm oder Auftritt unter 23 cm – für Wohngebäude meist nicht zulässig.'] : [],
+        hinweise: [
+          ...(r.steigung > 20 || r.auftritt < 23 ? ['Steigung über 20 cm oder Auftritt unter 23 cm – für Wohngebäude meist nicht zulässig.'] : []),
+          ...(schrittAus ? ['Das Schrittmaß liegt außerhalb von 59 bis 65 cm – die Treppe läuft sich unbequem.'] : []),
+        ],
       }
     },
   },

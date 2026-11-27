@@ -66,6 +66,8 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Alle Rechner mit Zeichnung: eine Zeichnung oben statt Skizze, Feldliste darunter. Ohne Eingaben entsteht die Form aus Beispielwerten (`beispiel` in der Rechner-Definition, `src/lib/vorschau.ts`); gezeigt werden nur eingetragene Werte, leere Felder mit ihrem Namen, berechnete Maße erst mit dem Ergebnis
 - Dachfläche Satteldach: Eingaben in der gewählten Längeneinheit, Fläche in m²; Querschnitt und Grundriss als Zeichnung; wahlweise zweite Dachneigung mit außermittigem First
 - Gratsparren: Abgratungslinie (Kehle: Kehllinie) gestrichelt in Seitenansicht und Anfallspunkt, Gratlinie gestrichelt in den Ansichten der Seitenflächen (Hexenschnitt, Kerve)
+- Übersicht merkt die Scrollposition: Zurück aus einer Funktion landet an der verlassenen Stelle
+- Treppe: Auftritt wahlweise selbst eintragen, das Schrittmaß wird ausgewiesen und geprüft
 
 ## KI-Assistent (freiwillig)
 

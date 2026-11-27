@@ -382,6 +382,14 @@ describe('Befunde der Rechenkontrolle', () => {
     expect(treppe(146.76, 19.65).steigungen).toBe(8)
     expect(treppe(280, 18).steigungen).toBe(16)
     expect(treppe(10, 18).steigungen).toBe(1)
+    // eigener Auftritt: Lauflänge und Schrittmaß folgen daraus, die Steigung bleibt
+    const e = treppe(280, 18, 63, 27)
+    expect(e.steigungen).toBe(16)
+    nah(e.auftritt, 27)
+    nah(e.lauflaenge, 15 * 27)
+    nah(e.schrittmass, 2 * 17.5 + 27)
+    nah(treppe(280).schrittmass, 63)
+    expect(() => treppe(280, 18, 63, 0)).toThrow()
   })
   it('Stabzahl: meldet klar, wenn nichts passt, und liefert nie null Stäbe', () => {
     expect(() => stabAnzahl(81, 14.3, 15.14, 'ecke')).toThrow('Mit diesem Achsmaß')

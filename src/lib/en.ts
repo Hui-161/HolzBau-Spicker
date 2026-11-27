@@ -332,8 +332,8 @@ export const EN: Record<string, string> = {
   // Sonstiges
   Treppe: 'Stairs',
   'Steigung und Auftritt nach Schrittmaß': 'Rise and going by the step rule',
-  'Schrittmaßregel: 2 × Steigung + Auftritt = 63 cm. Bequem ist eine Treppe bei Auftritt − Steigung ≈ 12 cm, sicher bei Auftritt + Steigung ≈ 46 cm. Bauordnung und DIN 18065 gehen vor.':
-    'Step rule: 2 × rise + going = 63 cm. Stairs are comfortable at going − rise ≈ 12 cm and safe at going + rise ≈ 46 cm. Building regulations and DIN 18065 take precedence.',
+  'Ohne eigenen Auftritt wird er aus der Schrittmaßregel berechnet; mit eigenem Auftritt wird das Schrittmaß ausgewiesen. Schrittmaßregel: 2 × Steigung + Auftritt = 63 cm. Bequem ist eine Treppe bei Auftritt − Steigung ≈ 12 cm, sicher bei Auftritt + Steigung ≈ 46 cm. Bauordnung und DIN 18065 gehen vor.':
+    'Without your own going it is calculated from the step rule; with your own going the step measure is shown. Step rule: 2 × rise + going = 63 cm. Stairs are comfortable at going − rise ≈ 12 cm and safe at going + rise ≈ 46 cm. Building regulations and DIN 18065 take precedence.',
   'Geschosshöhe (OKFF bis OKFF)': 'Storey height (finished floor to finished floor)',
   'Wunsch-Steigung': 'Preferred rise',
   'leer = 18 cm': 'empty = 18 cm',
@@ -895,4 +895,8 @@ export const EN: Record<string, string> = {
   'First ab Traufwand Seite 1 (waagerecht)': 'Ridge from eaves wall of side 1 (level)',
   'Abgratungslinie': 'Backing line',
   'Gratlinie': 'Hip line',
+  'Auftritt muss größer als 0 sein.': 'The going must be greater than 0.',
+  'leer = aus der Schrittmaßregel berechnet': 'empty = calculated from the step rule',
+  'Schrittmaß: 2 × Steigung + Auftritt': 'Step measure: 2 × rise + going',
+  'Das Schrittmaß liegt außerhalb von 59 bis 65 cm – die Treppe läuft sich unbequem.': 'The step measure is outside 59 to 65 cm – the stair will be uncomfortable to walk.',
 }
