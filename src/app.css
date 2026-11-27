@@ -1,0 +1,87 @@
+/* Hoher Kontrast für draußen, große Tippflächen für Handschuhe und Daumen. */
+:root {
+  --grund: #f4f1ea;
+  --flaeche: #ffffff;
+  --text: #1c1a17;
+  --leise: #5d574d;
+  --rand: #d3ccbe;
+  --akzent: #2f5d3a;
+  --warn: #a8321f;
+  --kopf: #2f5d3a;
+  --kopf-text: #ffffff;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grund: #15171a;
+    --flaeche: #1f2226;
+    --text: #f1efe9;
+    --leise: #a8a399;
+    --rand: #3a3e44;
+    --akzent: #8fd19e;
+    --warn: #ff9483;
+    --kopf: #1f2226;
+    --kopf-text: #f1efe9;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--grund);
+  color: var(--text);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input[type='search']:focus-visible {
+  outline: 3px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+/* Drucken / als PDF sichern: nur Inhalt, schwarz auf weiß */
+@media print {
+  :root {
+    --grund: #fff;
+    --flaeche: #fff;
+    --text: #000;
+    --leise: #333;
+    --rand: #999;
+    --akzent: #000;
+    --kopf: #fff;
+    --kopf-text: #000;
+    font-size: 12pt;
+  }
+  .nicht-drucken {
+    display: none !important;
+  }
+  header {
+    position: static !important;
+  }
+}
