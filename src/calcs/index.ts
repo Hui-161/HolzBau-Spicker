@@ -4,7 +4,7 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneFirst, zeichneTraufe, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
@@ -287,11 +287,18 @@ export const RECHNER: Rechner[] = [
       const r = kehlbalken({ weite: zahl(w, 'w'), neigung: zahl(w, 'a'), hoeheUnten: zahl(w, 'h'), balkenhoehe: zahl(w, 'hk') })
       return {
         zeichnung: zeichneKehlbalken(zahl(w, 'w'), zahl(w, 'a'), zahl(w, 'h'), zahl(w, 'hk')),
+        details: [
+          ...detail('Detail 1: Anschluss am Sparren', zeichneKehlbalkenAnschluss(zahl(w, 'a'), zahl(w, 'hk'), r.rissSparren)),
+          ...detail('Detail 2: Kehlbalken als Werkstück', zeichneKehlbalkenStueck(r.laengeUnten, r.laengeOben, zahl(w, 'hk'), zahl(w, 'a'))),
+        ],
         ausgaben: [
           L('Länge Unterkante', r.laengeUnten, true),
           L('Länge Oberkante', r.laengeOben, true),
           W('Abschnitt an beiden Enden', r.abschnitt),
+          L('Oberkante je Ende kürzer um', r.versatz),
+          L('Länge der Schnittfläche', r.schnittlaenge),
           L('Riss am Sparren ab Bezugslinie', r.rissSparren),
+          L('Riss am Sparren bis Oberkante Kehlbalken', r.rissSparrenOben),
           L('Spitze der Sparrenunterkanten über Bezugslinie', r.firstUeberBezug),
           L('OK Kehlbalken bis zu dieser Spitze', r.restBisFirst),
         ],
@@ -343,19 +350,57 @@ export const RECHNER: Rechner[] = [
       { id: 'ut', label: 'Überstand unten (waagerecht)', art: 'len', vorgabe: 0 },
       { id: 'uh', label: 'Überstand oben (waagerecht)', art: 'len', vorgabe: 0 },
       { id: 'l', label: 'Trauflänge für die Fläche', art: 'len', optional: true },
+      { id: 'h', label: 'Sparrenhöhe', art: 'len', optional: true, hinweis: 'für Anriss und Details' },
+      { id: 'k', label: 'Kerventiefe', art: 'len', optional: true, hinweis: 'gilt für beide Auflager' },
+      { id: 'po', label: 'Breite oberes Auflager', art: 'len', optional: true, hinweis: 'für die Kerve am oberen Auflager' },
     ],
     rechne: (w, k) => {
-      const r = pultdach({ breite: zahl(w, 'b'), neigung: zahl(w, 'a'), ueberstandTief: zahl(w, 'ut'), ueberstandHoch: zahl(w, 'uh') })
+      const [breite, neigung, ut, uh] = [zahl(w, 'b'), zahl(w, 'a'), zahl(w, 'ut'), zahl(w, 'uh')]
+      const r = pultdach({ breite, neigung, ueberstandTief: ut, ueberstandHoch: uh })
       const l = opt(w, 'l')
+      const [h, kerve, po] = [opt(w, 'h'), opt(w, 'k') ?? 0, opt(w, 'po')]
+      // Mit Sparrenhöhe wird der Pultsparren wie ein Sparren gerechnet: unteres Auflager = Fußpfette,
+      // das obere Auflager beginnt an seiner unteren Kante, das obere Sparrenende ist ein Senkelschnitt.
+      const bild = h ? { grundmass: breite + uh, neigung, ueberstand: ut, sparrenhoehe: h, kerve, mittelpfette: po ? breite - po : undefined, auflagerOben: po } : undefined
+      const sp = bild ? sparren(bild) : undefined
+      const risse: [string, number][] = sp
+        ? [
+            ['Traufe: Senkelriss', 0],
+            ...(ut > 0 || kerve > 0 ? ([['Auflager unten: Senkelriss an der Außenkante', sp.anriss.kerveSenkel]] as [string, number][]) : []),
+            ...(kerve > 0 ? ([['Auflager unten: Ende des Waagrisses an der Unterkante', sp.anriss.kerveEnde]] as [string, number][]) : []),
+            ...(sp.mittelpfette ? ([['Auflager oben: Senkelriss an der unteren Kante', sp.mittelpfette.senkel]] as [string, number][]) : []),
+            ...(sp.mittelpfette && kerve > 0 ? ([['Auflager oben: Ende des Waagrisses an der Unterkante', sp.mittelpfette.ende]] as [string, number][]) : []),
+            ['Oberes Ende: Senkelriss', sp.anriss.first],
+          ]
+        : []
       return {
-        zeichnung: zeichnePultdach(zahl(w, 'b'), zahl(w, 'ut'), zahl(w, 'uh'), zahl(w, 'a')),
+        zeichnung: bild ? zeichneSparren({ ...bild, aussenOben: breite, feld: { ue: 'ut', a: 'a', b: 'b', uh: 'uh' } }) : zeichnePultdach(breite, ut, uh, neigung),
+        details: bild && sp && h
+          ? [
+              ...(ut > 0 ? detail('Detail Traufe: Senkelschnitt', zeichneTraufe(neigung, h, 'senkel')) : []),
+              ...detail('Detail Auflager unten', zeichneKerve(neigung, h, kerve, 'Auflager', sp.anriss.kerveSenkel)),
+              ...(sp.mittelpfette ? detail('Detail Auflager oben', zeichneKerve(neigung, h, kerve, 'Auflager', sp.mittelpfette.senkel)) : []),
+              ...detail('Detail oberes Ende: Senkelschnitt', zeichneFirst(neigung, h, 0, 0, sp.anriss.first, undefined, false)),
+            ]
+          : [],
         ausgaben: [
           L('Sparrenlänge gesamt', r.sparrenlaenge, true),
           L('davon zwischen den Auflagern', r.laengeAuflager),
           L('Höhenunterschied der Auflager', r.hoehe, true),
           L('Höhenunterschied Traufe bis First', r.hoeheGesamt),
           ...(l ? [{ label: 'Dachfläche', wert: qm(r.sparrenlaenge, l, k.jeCm), art: 'num', einheit: 'm²', stellen: 2 } as Ausgabe] : []),
+          ...(sp
+            ? [
+                L('Holzlänge mindestens (mit Schnittschrägen)', sp.rohlaenge),
+                L('Lotschnitt (Senkel)', sp.lotschnitt),
+                ...(kerve > 0 ? [L('Obholz lotrecht', sp.obholz), L('Kerve: Auflage waagerecht', sp.kervenSattel), L('Kerve: Wange lotrecht', sp.kervenLot)] : []),
+                ...(sp.mittelpfette ? [L('Oberkante oberes Auflager über unterem', sp.mittelpfette.hoehe)] : []),
+                W('Anriss: Senkelriss zur Sparrenkante', sp.anriss.winkelSenkel),
+                W('Anriss: Waagriss zur Sparrenkante', sp.anriss.winkelWaage),
+              ]
+            : []),
         ],
+        ...(sp ? { liste: { titel: 'Anriss am Sparren, ab Traufpunkt entlang der Kante', kopf: ['Nr.', 'Riss', 'Lage'], arten: ['int', 'wort', 'len'] as Liste['arten'], zeilen: risse.map((z, i) => [i + 1, z[0], z[1]]) } } : {}),
       }
     },
   },
@@ -374,6 +419,11 @@ export const RECHNER: Rechner[] = [
       const r = zeltdach(zahl(w, 'n'), zahl(w, 'a'), zahl(w, 'w'))
       return {
         zeichnung: zeichneZeltdach(zahl(w, 'n'), zahl(w, 'a'), r.gratGrund),
+        details: [
+          ...detail('Detail 1: Mittelsparren, Seitenansicht', zeichneGratSeite(r.inkreis, r.hoehe, zahl(w, 'w'), 'Traufmitte', 'Spitze')),
+          ...detail('Detail 2: Gratsparren, Seitenansicht', zeichneGratSeite(r.gratGrund, r.hoehe, r.gratNeigung, 'Traufecke', 'Spitze')),
+          ...detail('Detail 3: eine Dachfläche in wahrer Größe', zeichneDachflaeche(zahl(w, 'a'), r.sparrenlaenge, r.gratLaenge, r.winkelFlaeche, 'a')),
+        ],
         ausgaben: [
           L('Gratsparrenlänge', r.gratLaenge, true),
           W('Gratneigung', r.gratNeigung, true),
@@ -381,6 +431,9 @@ export const RECHNER: Rechner[] = [
           L('Höhe der Spitze', r.hoehe),
           L('Gratgrundmaß', r.gratGrund),
           W('Grundwinkel Grat zur Traufe', r.grundwinkel),
+          L('Grundmaß Mittelsparren (Traufmitte bis Spitze)', r.inkreis),
+          W('Dachfläche: Winkel Grat zur Traufe', r.winkelFlaeche),
+          W('Dachfläche: Winkel an der Spitze', r.winkelSpitze),
           { label: 'Dachfläche gesamt', wert: qm(zahl(w, 'n') * zahl(w, 'a'), r.sparrenlaenge / 2, k.jeCm), art: 'num', einheit: 'm²', stellen: 2 },
         ],
       }
@@ -398,17 +451,20 @@ export const RECHNER: Rechner[] = [
       { id: 'ag', label: 'Neigung Gaube', art: 'ang', vorgabe: 15 },
       { id: 'h', label: 'Fronthöhe', art: 'len' },
       { id: 'b', label: 'Gaubenbreite für die Fläche', art: 'len', optional: true },
+      { id: 'hs', label: 'Höhe Gaubensparren', art: 'len', optional: true, hinweis: 'für den Anschnitt auf dem Hauptdach' },
     ],
     rechne: (w, k) => {
-      const r = schleppgaube({ neigungHaupt: zahl(w, 'ah'), neigungGaube: zahl(w, 'ag'), hoeheFront: zahl(w, 'h') })
+      const r = schleppgaube({ neigungHaupt: zahl(w, 'ah'), neigungGaube: zahl(w, 'ag'), hoeheFront: zahl(w, 'h'), sparrenhoehe: opt(w, 'hs') })
       const b = opt(w, 'b')
       return {
         zeichnung: zeichneGaube(zahl(w, 'ah'), zahl(w, 'ag'), zahl(w, 'h'), r.lauf),
+        details: detail(r.anschnitt ? 'Detail: Anschnitt des Gaubensparrens auf dem Hauptdach' : 'Detail: Anschluss des Gaubensparrens am Hauptdach (Sparrenhöhe eingeben für das Schnittmaß)', zeichneGaubeAnschluss(zahl(w, 'ah'), zahl(w, 'ag'), opt(w, 'hs'))),
         ausgaben: [
           L('Gaubensparren', r.sparrenGaube, true),
           L('Anschlusslänge auf dem Hauptdach', r.anschlussHaupt, true),
           L('Lauf (waagerecht)', r.lauf),
           W('Winkel Gaubensparren zum Hauptdach', r.anschlusswinkel),
+          ...(r.anschnitt ? [L('Anschnitt: Länge der Schnittfläche auf dem Hauptdach', r.anschnitt)] : []),
           { label: 'Wangenfläche je Seite', wert: qm(zahl(w, 'h'), r.lauf / 2, k.jeCm), art: 'num', einheit: 'm²', stellen: 2 },
           ...(b ? [{ label: 'Dachfläche Gaube', wert: qm(r.sparrenGaube, b, k.jeCm), art: 'num', einheit: 'm²', stellen: 2 } as Ausgabe] : []),
         ],
@@ -447,6 +503,12 @@ export const RECHNER: Rechner[] = [
       const raster = opt(w, 'e')
       return {
         zeichnung: zeichneSattelgaube(zahl(w, 'b'), r.trauflaenge, r.trauflaenge + r.kehlGrund * Math.cos((r.kehlWinkel * Math.PI) / 180), r.kehlGrund, wg?.walmGrund ?? 0),
+        details: [
+          ...detail('Detail 1: Querschnitt der Gaube', zeichneGaubeQuer(zahl(w, 'b'), r.firstUeberTraufe, r.sparren, zahl(w, 'ag'))),
+          ...detail('Detail 2: Längsschnitt – Traufe und First laufen ins Hauptdach', zeichneGaubeLaengs(zahl(w, 'ah'), zahl(w, 'h'), r.firstUeberTraufe, r.trauflaenge, wg?.walmGrund ?? 0)),
+          ...detail('Detail 3: Kehlsparren, Seitenansicht', zeichneGratSeite(r.kehlGrund, r.firstUeberTraufe, r.kehlNeigung, 'Gaubentraufe', 'Gaubenfirst')),
+          ...(wg ? detail('Detail 4: Gratsparren am Walm, Seitenansicht', zeichneGratSeite(wg.grat.gratGrund, wg.grat.hoehe, wg.grat.gratNeigung, 'Traufecke', 'Anfallspunkt')) : []),
+        ],
         ausgaben: [
           L('Kehlsparrenlänge', r.kehlLaenge, true),
           W('Kehlneigung', r.kehlNeigung, true),

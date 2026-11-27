@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gaubenSparrenliste, grat, gratAnfall, gratKerve, sattelgaube, sparren, walmgaube } from './dach'
+import { gaubenSparrenliste, grat, gratAnfall, gratKerve, kehlbalken, sattelgaube, schleppgaube, sparren, walmgaube, zeltdach } from './dach'
 import { leseStueckliste, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
 import { mindestabstaendeStift, mindestholzdicke } from './verbindung'
@@ -338,5 +338,42 @@ describe('Sparren: Pfettenkerven, Traufabschnitt, Holzlänge', () => {
     expect(() => sparren({ ...e, ueberstand: 5, traufe: 'winkel' })).toThrow()
     // ohne Überstand bleibt es beim Senkelschnitt
     expect(sparren({ ...e, ueberstand: 0, traufe: 'winkel' }).traufe.profil).toBe('senkel')
+  })
+})
+
+describe('Details: Kehlbalken, Zeltdach, Schleppgaube, Pultsparren', () => {
+  const rad = (g: number) => (g * Math.PI) / 180
+  it('Kehlbalken: Versatz und Schnittfläche aus den beiden Längen', () => {
+    const r = kehlbalken({ weite: 800, neigung: 40, hoeheUnten: 250, balkenhoehe: 16 })
+    nah(r.versatz, (r.laengeUnten - r.laengeOben) / 2)
+    nah(r.schnittlaenge, Math.hypot(r.versatz, 16))
+    // die beiden Risse liegen um die Schnittfläche auseinander
+    nah(r.rissSparrenOben - r.rissSparren, r.schnittlaenge)
+  })
+  it('Zeltdach: Winkel der Dachfläche über die Seitenlängen des Dreiecks (Kosinussatz)', () => {
+    for (const [n, a, w] of [[4, 800, 45], [6, 300, 30], [8, 250, 60]] as const) {
+      const r = zeltdach(n, a, w)
+      // Dreieck Traufe – Grat – Grat
+      const cosBasis = a / 2 / r.gratLaenge
+      nah(r.winkelFlaeche, (Math.acos(cosBasis) * 180) / Math.PI)
+      const cosSpitze = (2 * r.gratLaenge ** 2 - a ** 2) / (2 * r.gratLaenge ** 2)
+      nah(r.winkelSpitze, (Math.acos(cosSpitze) * 180) / Math.PI)
+      nah(r.inkreis, r.sparrenlaenge * Math.cos(rad(w)))
+    }
+  })
+  it('Schleppgaube: Anschnitt aus dem Schnittpunkt von Sparrenunterkante und Hauptdach', () => {
+    const [ah, ag, hs] = [45, 15, 14]
+    const r = schleppgaube({ neigungHaupt: ah, neigungGaube: ag, hoeheFront: 120, sparrenhoehe: hs })
+    // Oberkante trifft das Hauptdach im Nullpunkt; Unterkante: y = x·tan ag − hs/cos ag; Hauptdach: y = x·tan ah
+    const x = -hs / Math.cos(rad(ag)) / (Math.tan(rad(ah)) - Math.tan(rad(ag)))
+    nah(r.anschnitt!, Math.hypot(x, x * Math.tan(rad(ah))))
+    expect(schleppgaube({ neigungHaupt: ah, neigungGaube: ag, hoeheFront: 120 }).anschnitt).toBeUndefined()
+  })
+  it('Pultsparren als Sparren: oberes Auflager liegt um die Höhe über dem unteren', () => {
+    // Breite 400 zwischen den Außenkanten, oberes Auflager 12 breit, Überstände 30 / 20
+    const r = sparren({ grundmass: 420, neigung: 10, ueberstand: 30, sparrenhoehe: 20, kerve: 3, mittelpfette: 388 })
+    nah(r.mittelpfette!.hoehe, 388 * Math.tan(rad(10)))
+    nah(r.anriss.first, 450 / Math.cos(rad(10)))
+    nah(r.mittelpfette!.senkel, 418 / Math.cos(rad(10)))
   })
 })

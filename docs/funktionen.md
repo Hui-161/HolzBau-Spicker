@@ -25,6 +25,8 @@ Kontrollrechnungen getestet. Texte, Skizzen und Aufbau sind eigene.
 - Maßstäbliche Zeichnungen mit Maßzahlen zu Sparren, Grat mit Schiftern, Kehlbalken, Einteilung, Dreieck und Stern
 - Zeichnungen als Plandetails (Haarlinien auf weißem Grund) mit Maßketten; blau gesetzte Eingabemaße lassen sich in der Zeichnung antippen und ändern
 - Grat-/Kehlsparren: Details zu Seitenansicht, Gratfuß mit Verstich, Abgratung, Hexenschnitt, Anfallspunkt mit Backen und Kerve über der Pfettenecke
+- Details auch für Kehlbalken (Anschluss am Sparren, Werkstück), Pultdach (Traufe, beide Auflager, oberes Ende – mit Sparrenhöhe), Zeltdach (Mittel- und Gratsparren, Dachfläche in wahrer Größe), Schleppgaube (Anschnitt auf dem Hauptdach) und Sattel-/Walmgaube (Querschnitt, Längsschnitt, Kehl- und Gratsparren)
+- Bedienung: Sprungleiste über der Programmleiste (Eingabe, Zeichnung, Details, Maße, Listen), Enter springt ins nächste Feld, Auswahl direkt in der Skizze (3-4-5)
 - Deutsch und Englisch, umschaltbar auf der Startseite
 - Abnahmeprotokoll mit Mängelliste und Bautagesbericht
 - Stammdaten des Betriebs und Angaben zum Projekt werden in allen Vorlagen vorbelegt

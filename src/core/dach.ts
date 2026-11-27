@@ -272,6 +272,12 @@ export function kehlbalken(e: KehlbalkenEingabe) {
     abschnitt: e.neigung,
     /** Sparrenunterkante: von der Bezugslinie schräg bis UK Kehlbalken */
     rissSparren: e.hoeheUnten / sin(e.neigung),
+    /** dasselbe bis Oberkante Kehlbalken */
+    rissSparrenOben: (e.hoeheUnten + e.balkenhoehe) / sin(e.neigung),
+    /** um so viel ist die Oberkante an jedem Ende kürzer als die Unterkante */
+    versatz: e.balkenhoehe / t,
+    /** Länge der Schnittfläche am Balkenende, entlang der Sparrenunterkante */
+    schnittlaenge: e.balkenhoehe / sin(e.neigung),
     firstUeberBezug: first,
     restBisFirst: first - e.hoeheUnten - e.balkenhoehe,
   }
@@ -391,6 +397,11 @@ export function zeltdach(seiten: number, seitenlaenge: number, neigung: number) 
   const sparren = inkreis / cos(neigung)
   return {
     hoehe,
+    /** Grundmaß des Mittelsparrens: Traufmitte bis unter die Spitze */
+    inkreis,
+    /** eine Dachfläche in wahrer Größe: Winkel zwischen Traufe und Grat, und der Winkel an der Spitze */
+    winkelFlaeche: atan(sparren / (seitenlaenge / 2)),
+    winkelSpitze: 180 - 2 * atan(sparren / (seitenlaenge / 2)),
     /** Mittelsparren: von Traufmitte zur Spitze */
     sparrenlaenge: sparren,
     gratGrund: umkreis,
@@ -410,6 +421,8 @@ export interface GaubeEingabe {
   neigungGaube: number
   /** lotrechte Höhe der Gaubenfront: Hauptdachfläche bis Gaubendachfläche */
   hoeheFront: number
+  /** Höhe des Gaubensparrens, für den Anschnitt auf dem Hauptdach */
+  sparrenhoehe?: number
 }
 
 export function schleppgaube(e: GaubeEingabe) {
@@ -418,7 +431,10 @@ export function schleppgaube(e: GaubeEingabe) {
   pruefe(e.hoeheFront > 0, 'Fronthöhe muss größer als 0 sein.')
   // Beide Dachflächen laufen ab der Front nach hinten, bis sie sich treffen
   const lauf = e.hoeheFront / (tan(e.neigungHaupt) - tan(e.neigungGaube))
+  if (e.sparrenhoehe !== undefined) pruefe(e.sparrenhoehe > 0, 'Die Höhe des Gaubensparrens muss größer als 0 sein.')
   return {
+    /** Schmiege am oberen Ende des Gaubensparrens: Länge der Schnittfläche, die auf dem Hauptdach aufliegt */
+    anschnitt: e.sparrenhoehe === undefined ? undefined : e.sparrenhoehe / sin(e.neigungHaupt - e.neigungGaube),
     lauf,
     sparrenGaube: lauf / cos(e.neigungGaube),
     /** Länge der Wange auf dem Hauptdach, in der Dachfläche gemessen */

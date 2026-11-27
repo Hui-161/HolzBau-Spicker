@@ -123,6 +123,36 @@
     }
   })
 
+  // Sprungleiste über der Programmleiste: direkt zu Eingabe, Zeichnung, jedem Detail, Maßen und Listen
+  // „Detail Kerve Fußpfette“ → „Kerve Fußpfette“, „Detail 1: …“ → „Detail 1“
+  const kurz = (titel: string): string => titel.split(/:| – | \(/)[0].replace(/^Detail (?=\D)/, '')
+  const spruenge = $derived.by<{ k: string; n: string }[]>(() => {
+    if (!('ergebnis' in stand)) return []
+    const e = stand.ergebnis
+    const l = listen(e)
+    return [
+      { k: 'eingabe', n: t('Eingabe') },
+      ...(e.zeichnung ? [{ k: 'z0', n: t('Zeichnung') }] : []),
+      ...(e.details ?? []).map((d, i) => ({ k: `z${i + 1}`, n: kurz(t(d.titel)) })),
+      { k: 'masse', n: t('Maße') },
+      ...l.map((_, i) => ({ k: `l${i}`, n: l.length > 1 ? `${t('Liste')} ${i + 1}` : t('Liste') })),
+    ]
+  })
+  function springe(k: string) {
+    document.querySelector(`[data-sprung="${k}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  /** Enter springt ins nächste Eingabefeld; im letzten Feld schließt es die Tastatur */
+  function weiter(e: KeyboardEvent) {
+    const ziel = e.target as HTMLElement
+    if (e.key !== 'Enter' || !(ziel instanceof HTMLInputElement)) return
+    e.preventDefault()
+    const felder = [...(e.currentTarget as HTMLFormElement).querySelectorAll<HTMLElement>('input, select, textarea')]
+    const naechstes = felder[felder.indexOf(ziel) + 1]
+    if (naechstes) naechstes.focus()
+    else ziel.blur()
+  }
+
   const fav = $derived(zustand.favoriten.includes(rechner.id))
 </script>
 
@@ -186,7 +216,8 @@
   {/if}
 {/if}
 
-<form onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<form data-sprung="eingabe" onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke} onkeydown={weiter}>
   {#each imFormular as f (f.id)}
     <label class:falsch={ungueltig(f)} class:breit={f.art === 'liste'}>
       <span class="name">{t(f.label)}{#if f.optional}<em> · {t('freiwillig')}</em>{/if}</span>
@@ -228,13 +259,13 @@
       <p class="fehler">{t(h)}</p>
     {/each}
     {#if stand.ergebnis.zeichnung}
-      {@render bild(stand.ergebnis.zeichnung, 0)}
+      <div data-sprung="z0">{@render bild(stand.ergebnis.zeichnung, 0)}</div>
     {/if}
     {#each stand.ergebnis.details ?? [] as d, i (d.titel)}
-      <h2>{t(d.titel)}</h2>
+      <h2 data-sprung={`z${i + 1}`}>{t(d.titel)}</h2>
       {@render bild(d.zeichnung, i + 1)}
     {/each}
-    <dl>
+    <dl data-sprung="masse">
       {#each stand.ergebnis.ausgaben as a (a.label + a.art)}
         <div class:wichtig={a.wichtig}>
           <dt>{t(a.label)}</dt>
@@ -242,8 +273,8 @@
         </div>
       {/each}
     </dl>
-    {#each listen(stand.ergebnis) as l (l.titel)}
-      <h2>{t(l.titel)}</h2>
+    {#each listen(stand.ergebnis) as l, nr (l.titel)}
+      <h2 data-sprung={`l${nr}`}>{t(l.titel)}</h2>
       <table>
         <thead>
           <tr>{#each l.kopf as k, i (k)}<th>{t(k)}{#if l.arten[i] === 'len'} ({zustand.einheit}){/if}</th>{/each}</tr>
@@ -260,6 +291,15 @@
 
 {#if rechner.info}
   <p class="info">{t(rechner.info)}</p>
+{/if}
+
+{#if spruenge.length > 2}
+  <div class="platz nicht-drucken"></div>
+  <nav class="sprung nicht-drucken" aria-label={t('Springen zu')}>
+    {#each spruenge as sp (sp.k)}
+      <button type="button" onclick={() => springe(sp.k)}>{sp.n}</button>
+    {/each}
+  </nav>
 {/if}
 
 <style>
@@ -366,6 +406,39 @@
   }
   .skizze.waehlbar :global([data-feld]:focus-visible text) {
     text-decoration: underline;
+  }
+  /* obere Ebene der Menüleiste: Sprünge innerhalb des geöffneten Rechners */
+  .sprung {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(3.55rem + 1px + env(safe-area-inset-bottom));
+    z-index: 6;
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid var(--rand);
+    background: var(--flaeche);
+  }
+  .sprung button {
+    flex: none;
+    min-height: 2.25rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--rand);
+    border-radius: 0.6rem;
+    background: var(--grund);
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .platz {
+    height: 3rem;
+  }
+  :global([data-sprung]) {
+    scroll-margin-top: 4.5rem;
   }
   form {
     display: grid;

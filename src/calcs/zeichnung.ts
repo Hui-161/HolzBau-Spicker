@@ -230,11 +230,12 @@ function blatt(punkte: Punkt[], rand: Rand) {
  * Kettenmaß an einem Riss: Hinweislinie winkelrecht von der Oberkante weg, daran entlang das Maß
  * ab Traufpunkt. Ein Pfeil an der Kante zeigt, aus welcher Richtung gemessen wird.
  */
-function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert: number, seite: 0 | 1 | -1 = 0): void {
+function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert: number, seite: 0 | 1 | -1 = 0, name = 'ab Traufpunkt', unten = false): void {
   const r = (neigungGrad * Math.PI) / 180
   const [x, y] = b.px(p)
   // n = von der Kante weg, u = die Kante bergauf (Zeichnungseinheiten, y nach unten)
-  const n: Punkt = [-Math.sin(r), -Math.cos(r)]
+  // unten = Hinweislinie unter der Kante statt darüber
+  const n: Punkt = unten ? [Math.sin(r), Math.cos(r)] : [-Math.sin(r), -Math.cos(r)]
   const u: Punkt = [Math.cos(r), -Math.sin(r)]
   const lang = 58
   const auf = (weg: number, laengs: number): Punkt => [x + n[0] * weg + u[0] * laengs, y + n[1] * weg + u[1] * laengs]
@@ -250,7 +251,7 @@ function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert
   const [zx, zy] = auf(lang / 2 + 7, seite === -1 ? -6 : 6)
   b.mass({ x: zx, y: zy, wert, art: 'len', drehung })
   const [tx, ty] = auf(lang / 2 + 7, seite === 0 ? -5.5 : 16 * seite)
-  b.mass({ x: tx, y: ty, wert: 0, art: 'len', text: 'ab Traufpunkt', drehung, klein: true })
+  b.mass({ x: tx, y: ty, wert: 0, art: 'len', text: name, drehung, klein: true })
 }
 
 /** Waagerechte von der Kerve nach rechts; die Neigung steht darunter, wo nichts anderes liegt. */
@@ -273,6 +274,12 @@ export interface SparrenBild {
   mittelpfette?: number
   /** Breite der Firstpfette */
   firstpfette?: number
+  /** Pultdach: Breite des oberen Auflagers; es beginnt an der „Mittelpfette“ und endet an seiner Außenkante */
+  auflagerOben?: number
+  /** Kennungen der Eingabefelder für antippbare Maße, falls sie vom Sparren-Rechner abweichen */
+  feld?: { ue?: string; g?: string; mp?: string; a?: string; b?: string; uh?: string }
+  /** Pultdach: Außenkante des oberen Auflagers – steht in der unteren Maßkette statt der Auflagerkante */
+  aussenOben?: number
 }
 
 /**
@@ -317,7 +324,7 @@ export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
     [x + breit, x * t - pf],
     [x, x * t - pf],
   ]
-  const pfetten = [kasten(0, pf), ...(e.mittelpfette ? [kasten(e.mittelpfette, pf)] : []), ...(xFirst !== undefined ? [kasten(xFirst, e.firstpfette as number)] : [])]
+  const pfetten = [kasten(0, pf), ...(e.mittelpfette ? [kasten(e.mittelpfette, e.auflagerOben ?? pf)] : []), ...(xFirst !== undefined ? [kasten(xFirst, e.firstpfette as number)] : [])]
   const mitFuss = ueberstand > 0 || kerve > 0
   const b = blatt([...sparren, ...pfetten.flat(), [grundmass, 0]], { l: 32, r: 30, o: 44, u: 38 })
   b.zug([[0, 0], [grundmass, 0], [grundmass, unten(grundmass)]], HILF)
@@ -328,16 +335,23 @@ export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
   }
   b.zug(sparren, FLAECHE, true)
   // unten die Grundmaße, rechts die Firsthöhe, am Sparren die Anrisslagen und die Gesamtlänge
+  const fid = e.feld ?? { ue: 'ue', g: 'g', mp: 'mp', a: 'a' }
   const xs = [-ueberstand, 0, ...(e.mittelpfette ? [e.mittelpfette] : []), ...(xFirst !== undefined ? [xFirst] : []), grundmass].filter((x, i, a) => i === 0 || x - a[i - 1] > 1e-9)
   const feldVon = (von: number, bis: number): string | undefined =>
-    von < -1e-9 && Math.abs(bis) < 1e-9 ? 'ue' : Math.abs(von) < 1e-9 && bis === grundmass ? 'g' : Math.abs(von) < 1e-9 && bis === e.mittelpfette ? 'mp' : undefined
-  b.kette(xs.map((x): Punkt => [x, 0]), { h: b.kante.unten + KETTE_1 }, { feld: xs.slice(1).map((x, i) => feldVon(xs[i], x)) })
+    von < -1e-9 && Math.abs(bis) < 1e-9 ? fid.ue : Math.abs(von) < 1e-9 && bis === grundmass ? fid.g : Math.abs(von) < 1e-9 && bis === e.mittelpfette ? fid.mp : undefined
+  if (e.aussenOben !== undefined) {
+    // Pultdach: Überstand unten, Breite zwischen den Außenkanten der Auflager, Überstand oben
+    const xp = [-ueberstand, 0, e.aussenOben, grundmass].filter((x, i, a) => i === 0 || x - a[i - 1] > 1e-9)
+    b.kette(xp.map((x): Punkt => [x, 0]), { h: b.kante.unten + KETTE_1 }, { feld: xp.slice(1).map((x, i) => (xp[i] < -1e-9 ? fid.ue : Math.abs(xp[i]) < 1e-9 ? fid.b : fid.uh)) })
+  } else {
+    b.kette(xs.map((x): Punkt => [x, 0]), { h: b.kante.unten + KETTE_1 }, { feld: xs.slice(1).map((x, i) => feldVon(xs[i], x)) })
+  }
   b.kette([[grundmass, 0], [grundmass, grundmass * t]], { v: b.kante.rechts + KETTE_1 })
   const risse = (mitFuss ? xs : [xs[0], xs[xs.length - 1]]).map(oben)
   b.kette(risse, { p: KETTE_1 })
   if (risse.length > 2) b.kette([risse[0], risse[risse.length - 1]], { p: KETTE_2 })
   // Neigung im Dreieck, dort wo zwischen Grundlinie und Sparren Platz ist
-  b.anPunkt([grundmass * 0.6, 0], e.neigung, 0, -8, { art: 'ang', feld: 'a' })
+  b.anPunkt([grundmass * 0.6, 0], e.neigung, 0, -8, { art: 'ang', feld: fid.a })
   return b.fertig()
 }
 
@@ -383,7 +397,7 @@ export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil:
  * Firstpunkt vergrößert: Senkelschnitt in Firstmitte, mit Firstpfette auch deren Kerve.
  * Nullpunkt ist der Firstpunkt an der Oberkante.
  */
-export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: number, firstpfette = 0, lageFirst?: number, lageKerve?: number): Zeichnung | undefined {
+export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: number, firstpfette = 0, lageFirst?: number, lageKerve?: number, gegensparren = true): Zeichnung | undefined {
   const rad = (neigungGrad * Math.PI) / 180
   if (!gueltig(rad, sparrenhoehe, kerve, firstpfette) || !(sparrenhoehe > kerve)) return undefined
   const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
@@ -418,7 +432,7 @@ export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: n
     text(b, [0, yk - firstpfette * 0.82], 0, 0, 'Firstpfette')
   }
   // Gegensparren nur angedeutet
-  b.zug([[0, 0], [-xa * 0.45, xa * 0.45 * t]], HILF)
+  if (gegensparren) b.zug([[0, 0], [-xa * 0.45, xa * 0.45 * t]], HILF)
   b.zug(sparren, FLAECHE, true)
   // rechts der Firstschnitt, unten die Auflage, links Wange und Obholz an der Kerve
   b.kette([fussFirst, [0, 0]], { v: b.kante.rechts + KETTE_1 })
@@ -813,7 +827,7 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
     [pf, -pf],
     [0, -pf],
   ]
-  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 30, u: 34 })
+  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: lage === undefined ? 20 : 66, u: 34 })
   b.zug(pfette, SCHNITT, true)
   kreuz(b, pfette)
   b.zug(sparren, FLAECHE, true)
@@ -833,7 +847,7 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
 }
 
 /** Seitenansicht des Grat- oder Kehlsparrens: Gratgrundmaß, Höhe, wahre Länge und Neigung. */
-export function zeichneGratSeite(gratGrund: number, hoehe: number, gratNeigung: number): Zeichnung | undefined {
+export function zeichneGratSeite(gratGrund: number, hoehe: number, gratNeigung: number, unten = 'Traufe', oben = 'Anfallspunkt'): Zeichnung | undefined {
   if (!gueltig(gratGrund, hoehe, gratNeigung)) return undefined
   const fuss: Punkt = [0, 0]
   const spitze: Punkt = [gratGrund, hoehe]
@@ -844,8 +858,8 @@ export function zeichneGratSeite(gratGrund: number, hoehe: number, gratNeigung: 
   b.kette([[gratGrund, 0], spitze], { v: b.kante.rechts + KETTE_1 })
   b.kette([fuss, spitze], { p: KETTE_1 })
   b.anPunkt([gratGrund * 0.55, 0], gratNeigung, 0, -8, { art: 'ang' })
-  b.mass({ ...ort(b, fuss, 4, 9), wert: 0, art: 'len', text: 'Traufe', klein: true, anker: 'start' })
-  b.mass({ ...ort(b, spitze, 5, -11), wert: 0, art: 'len', text: 'Anfallspunkt', klein: true, anker: 'start' })
+  b.mass({ ...ort(b, fuss, 4, 9), wert: 0, art: 'len', text: unten, klein: true, anker: 'start' })
+  b.mass({ ...ort(b, spitze, 5, -11), wert: 0, art: 'len', text: oben, klein: true, anker: 'start' })
   return b.fertig()
 }
 
@@ -1050,5 +1064,160 @@ export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: n
   b.kette([[-verstich, 0], [0, 0], [sattel, 0]], { h: b.kante.unten + KETTE_1 })
   b.kette([[0, unten(0)], [0, 0], oben], { v: b.kante.links - KETTE_1 })
   waagUndWinkel(b, sattel, pf, xb, gratNeigung)
+  return b.fertig()
+}
+
+/**
+ * Anschluss des Kehlbalkens an die Sparrenunterkante, linkes Ende. Nullpunkt ist der Punkt,
+ * an dem die Unterkante des Kehlbalkens die Sparrenunterkante trifft.
+ */
+export function zeichneKehlbalkenAnschluss(neigungGrad: number, balkenhoehe: number, rissSparren: number): Zeichnung | undefined {
+  const rad = (neigungGrad * Math.PI) / 180
+  if (!gueltig(rad, balkenhoehe, rissSparren) || !(balkenhoehe > 0)) return undefined
+  const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
+  const v = balkenhoehe / t
+  const lang = v + 2.6 * balkenhoehe
+  const balken: Punkt[] = [[0, 0], [lang, 0], [lang, balkenhoehe], [v, balkenhoehe]]
+  // Sparren nur angedeutet: seine Höhe ist hier nicht bekannt
+  const d = balkenhoehe * 0.8
+  const [a, e_] = [-1.3 * balkenhoehe, balkenhoehe / sin + 1.3 * balkenhoehe]
+  const auf = (weit: number, quer: number): Punkt => [weit * cos - quer * sin, weit * sin + quer * cos]
+  const sparren: Punkt[] = [auf(a, 0), auf(e_, 0), auf(e_, d), auf(a, d)]
+  const b = blatt([...balken, ...sparren, [0, -balkenhoehe * 1.6]], { l: 30, r: 40, o: 40, u: 30 })
+  b.zug(sparren, SCHNITT, true)
+  b.zug([auf(a, 0), auf(e_, 0)], LINIE)
+  b.zug(balken, FLAECHE, true)
+  b.zug([[0, 0], [v, balkenhoehe]], DICK)
+  text(b, auf(e_ * 0.92, d / 2), 0, 0, 'Sparren', { drehung: -neigungGrad })
+  // oben: Versatz zwischen Unter- und Oberkante; rechts: Balkenhöhe
+  b.kette([[0, balkenhoehe], [v, balkenhoehe]], { h: b.kante.oben - 4 }, { kurz: true })
+  b.kette([[lang, 0], [lang, balkenhoehe]], { v: b.kante.rechts + KETTE_1 }, { feld: ['hk'] })
+  // Abschnittwinkel im Balken an der unteren Ecke
+  const r = Math.max(28, 17 / Math.sin(rad / 2))
+  b.anPunkt([0, 0], neigungGrad, Math.cos(rad / 2) * r, -Math.sin(rad / 2) * r, { art: 'ang', klein: true })
+  lageAn(b, [0, 0], neigungGrad, rissSparren, 0, 'ab Bezugslinie', true)
+  return b.fertig()
+}
+
+/** Kehlbalken als Werkstück, in der Mitte gekürzt dargestellt: beide Längen, Höhe und Abschnitt. */
+export function zeichneKehlbalkenStueck(laengeUnten: number, laengeOben: number, balkenhoehe: number, neigungGrad: number): Zeichnung | undefined {
+  if (!gueltig(laengeUnten, laengeOben, balkenhoehe, neigungGrad) || !(laengeOben > 0)) return undefined
+  const v = (laengeUnten - laengeOben) / 2
+  // gezeichnete Länge: Enden maßstäblich, die Mitte herausgebrochen
+  const mitte = Math.min(laengeOben, 2.5 * balkenhoehe)
+  const lang = 2 * v + mitte
+  const bruch = lang / 2
+  const z = balkenhoehe * 0.12
+  const halb = (spiegel: 1 | -1): Punkt[] => {
+    const x = (wert: number): number => (spiegel === 1 ? wert : lang - wert)
+    return [[x(0), 0], [x(bruch - z), 0], [x(bruch + z * 0.4), balkenhoehe * 0.5], [x(bruch - z), balkenhoehe], [x(v), balkenhoehe]]
+  }
+  const b = blatt([[0, 0], [lang, balkenhoehe]], { l: 20, r: 36, o: 36, u: 36 })
+  const gekuerzt = mitte < laengeOben
+  if (gekuerzt) {
+    b.zug(halb(1), FLAECHE, true)
+    b.zug(halb(-1), FLAECHE, true)
+  } else {
+    b.zug([[0, 0], [lang, 0], [lang - v, balkenhoehe], [v, balkenhoehe]], FLAECHE, true)
+  }
+  b.kette([[0, 0], [lang, 0]], { h: b.kante.unten + KETTE_1 }, { werte: [laengeUnten] })
+  b.kette([[0, balkenhoehe], [v, balkenhoehe], [lang - v, balkenhoehe], [lang, balkenhoehe]], { h: b.kante.oben - KETTE_1 }, { werte: [v, laengeOben, v], kurz: true })
+  b.kette([[lang, 0], [lang, balkenhoehe]], { v: b.kante.rechts + KETTE_1 }, { feld: ['hk'], kurz: true })
+  const rad = (neigungGrad * Math.PI) / 180
+  const r = Math.max(26, 16 / Math.sin(rad / 2))
+  b.anPunkt([0, 0], neigungGrad, Math.cos(rad / 2) * r, -Math.sin(rad / 2) * r, { art: 'ang', klein: true })
+  return b.fertig()
+}
+
+/** Dreieckige Dachfläche in wahrer Größe: Traufe unten, Grate als Schenkel, Mittelsparren als Höhe. */
+export function zeichneDachflaeche(traufe: number, sparren: number, grat: number, winkel: number, feldTraufe?: string): Zeichnung | undefined {
+  if (!gueltig(traufe, sparren, grat, winkel) || !(traufe > 0) || !(sparren > 0)) return undefined
+  const ecken: Punkt[] = [[0, 0], [traufe, 0], [traufe / 2, sparren]]
+  const b = blatt(ecken, { l: 40, r: 40, o: 16, u: 30 })
+  b.zug(ecken, FLAECHE, true)
+  b.zug([[traufe / 2, 0], [traufe / 2, sparren]], HILF)
+  b.kette([[0, 0], [traufe, 0]], { h: b.kante.unten + KETTE_1 }, { feld: [feldTraufe] })
+  b.kette([[0, 0], [traufe / 2, sparren]], { p: 14 }, { werte: [grat] })
+  b.aufStrecke([traufe / 2, 0], [traufe / 2, sparren], sparren, {}, -8)
+  // Winkel zwischen Traufe und Grat, innen an der Ecke
+  const halb = (winkel * Math.PI) / 360
+  const r = 16 + 7 / Math.tan(halb)
+  if (r < 0.45 * (b.px([traufe, 0])[0] - b.px([0, 0])[0])) b.anPunkt([0, 0], winkel, Math.cos(halb) * r, -Math.sin(halb) * r, { art: 'ang', klein: true })
+  return b.fertig()
+}
+
+/**
+ * Oberes Ende des Gaubensparrens auf dem Hauptdach. Nullpunkt ist der Punkt, an dem die
+ * Oberkante des Gaubensparrens die Hauptdachfläche trifft. Ohne Sparrenhöhe nur angedeutet.
+ */
+export function zeichneGaubeAnschluss(neigungHaupt: number, neigungGaube: number, sparrenhoehe?: number): Zeichnung | undefined {
+  const [ah, ag] = [(neigungHaupt * Math.PI) / 180, (neigungGaube * Math.PI) / 180]
+  const d = ah - ag
+  if (!gueltig(ah, ag) || !(d > 0)) return undefined
+  const mitMass = sparrenhoehe !== undefined && sparrenhoehe > 0
+  const h = mitMass ? (sparrenhoehe as number) : 1
+  const schnitt = h / Math.sin(d)
+  const lang = schnitt * Math.cos(d) + 2.4 * h
+  const obenAnfang: Punkt = [-lang * Math.cos(ag), -lang * Math.sin(ag)]
+  const q: Punkt = [-schnitt * Math.cos(ah), -schnitt * Math.sin(ah)]
+  const untenAnfang: Punkt = [obenAnfang[0] + h * Math.sin(ag), obenAnfang[1] - h * Math.cos(ag)]
+  const sparren: Punkt[] = [obenAnfang, [0, 0], q, untenAnfang]
+  const haupt: Punkt[] = [[-(schnitt + 1.2 * h) * Math.cos(ah), -(schnitt + 1.2 * h) * Math.sin(ah)], [1.3 * h * Math.cos(ah), 1.3 * h * Math.sin(ah)]]
+  const b = blatt([...sparren, ...haupt], { l: 24, r: 44, o: 22, u: 40 })
+  b.zug(haupt, LINIE)
+  b.zug(sparren, FLAECHE, true)
+  b.zug([[0, 0], q], DICK)
+  text(b, haupt[1], -7, -3, 'Hauptdach', { anker: 'end' })
+  // Winkel im Holz zwischen Oberkante und Schnitt
+  const mitte = Math.PI + (ah + ag) / 2
+  const r = Math.max(34, 19 / Math.sin(d / 2))
+  b.anPunkt([0, 0], neigungHaupt - neigungGaube, Math.cos(mitte) * r, -Math.sin(mitte) * r, { art: 'ang', klein: true })
+  if (mitMass) {
+    b.kette([q, [0, 0]], { p: -14 }, { werte: [schnitt] })
+    const p: Punkt = [obenAnfang[0] * 0.8, obenAnfang[1] * 0.8]
+    b.kette([[p[0] + h * Math.sin(ag), p[1] - h * Math.cos(ag)], p], { p: 13 }, { werte: [h], feld: ['hs'] })
+  }
+  return b.fertig()
+}
+
+/** Querschnitt der Sattelgaube: Breite, Firsthöhe über der Traufe, Sparrenlänge und Neigung. */
+export function zeichneGaubeQuer(breite: number, first: number, sparren: number, neigung: number): Zeichnung | undefined {
+  if (!gueltig(breite, first, sparren, neigung) || !(breite > 0)) return undefined
+  const h = breite / 2
+  const ecken: Punkt[] = [[-h, 0], [0, first], [h, 0]]
+  const b = blatt(ecken, { l: 30, r: 36, o: 34, u: 30 })
+  b.zug([[-h, 0], [h, 0]], HILF)
+  b.zug([[0, 0], [0, first]], ACHSE)
+  b.zug(ecken, LINIE)
+  b.kette([[-h, 0], [h, 0]], { h: b.kante.unten + KETTE_1 }, { feld: ['b'] })
+  b.kette([[h, 0], [0, first]], { v: b.kante.rechts + KETTE_1 })
+  b.kette([[-h, 0], [0, first]], { p: KETTE_1 }, { werte: [sparren] })
+  const halb = (neigung * Math.PI) / 360
+  const r = 16 + 7 / Math.tan(halb)
+  if (r < 0.8 * (b.px([0, 0])[0] - b.px([-h, 0])[0])) b.anPunkt([-h, 0], neigung, Math.cos(halb) * r, -Math.sin(halb) * r, { art: 'ang', klein: true })
+  return b.fertig()
+}
+
+/**
+ * Längsschnitt der Gaube: Front links, Hauptdach steigt nach rechts. Gaubentraufe und Gaubenfirst
+ * laufen waagerecht, bis das Hauptdach sie erreicht. walmGrund > 0 zeichnet den Walm an der Front.
+ */
+export function zeichneGaubeLaengs(neigungHaupt: number, hoeheTraufe: number, firstUeberTraufe: number, trauflaenge: number, walmGrund = 0): Zeichnung | undefined {
+  const t = Math.tan((neigungHaupt * Math.PI) / 180)
+  if (!gueltig(t, hoeheTraufe, firstUeberTraufe, trauflaenge, walmGrund) || !(t > 0)) return undefined
+  const hoch = hoeheTraufe + firstUeberTraufe
+  const first = hoch / t
+  const haupt: Punkt[] = [[-0.12 * first, -0.12 * first * t], [1.12 * first, 1.12 * first * t]]
+  const b = blatt([...haupt, [0, hoch]], { l: 36, r: 16, o: 40, u: 34 })
+  b.zug(haupt, LINIE)
+  b.zug([[0, 0], [first, 0], [first, hoch]], HILF)
+  b.zug([[trauflaenge, 0], [trauflaenge, hoeheTraufe]], HILF)
+  // Front, Traufe, First; beim Walm der Grat von der Traufecke zum Anfallspunkt
+  b.zug(walmGrund > 0 ? [[0, 0], [0, hoeheTraufe], [walmGrund, hoch], [first, hoch]] : [[0, 0], [0, hoch], [first, hoch]], DICK)
+  b.zug([[0, hoeheTraufe], [trauflaenge, hoeheTraufe]], LINIE)
+  b.kette([[0, 0], [trauflaenge, 0], [first, 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[0, 0], [0, hoeheTraufe], [0, hoch]], { v: b.kante.links - KETTE_1 }, { feld: [hoeheTraufe > 0 ? 'h' : undefined] })
+  b.kette(walmGrund > 0 ? [[0, hoch], [walmGrund, hoch], [first, hoch]] : [[0, hoch], [first, hoch]], { h: b.kante.oben - KETTE_1 })
+  b.anPunkt([first * 0.72, 0], neigungHaupt, 0, -8, { art: 'ang', feld: 'ah' })
   return b.fertig()
 }

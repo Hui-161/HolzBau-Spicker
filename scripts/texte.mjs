@@ -21,7 +21,7 @@ export function sammleTexte(wurzel = '.') {
   }
   // 3. zusammengesetzte Meldungen
   for (const n of ['Dachneigung', 'Neigung Hauptdach', 'Neigung Walm']) texte.add(`${n} muss zwischen 0° und 90° liegen.`)
-  for (const s of ['vorgebohrt', 'Treffer', 'Traufpunkt', 'Senkelriss', 'First', 'Mittelpfette', 'Firstpfette', 'ab Traufpunkt', 'Fußpfette', 'Traufe', 'Anfallspunkt', 'Walm', 'Traufe Walm', 'Info & Datenschutz', 'Meine Favoriten', 'Projekte & Notizen', 'Bitte nur Zahlen eingeben.', 'Mit diesen Werten ist keine Berechnung möglich.']) texte.add(s)
+  for (const s of ['vorgebohrt', 'Treffer', 'Traufpunkt', 'Senkelriss', 'First', 'Mittelpfette', 'Firstpfette', 'ab Traufpunkt', 'ab Bezugslinie', 'Auflager', 'Traufmitte', 'Traufecke', 'Spitze', 'Gaubentraufe', 'Gaubenfirst', 'Sparren', 'Hauptdach', 'Fußpfette', 'Traufe', 'Anfallspunkt', 'Walm', 'Traufe Walm', 'Info & Datenschutz', 'Meine Favoriten', 'Projekte & Notizen', 'Bitte nur Zahlen eingeben.', 'Mit diesen Werten ist keine Berechnung möglich.']) texte.add(s)
   for (const s of ['${name} muss zwischen 0° und 90° liegen.', 'Dachneigung']) if (s.includes('${')) texte.delete(s)
   // ohne Buchstaben (Trennzeichen wie „, “) ist es kein Text
   return [...texte].filter((s) => /\p{L}/u.test(s) && !s.includes('${')).sort()
