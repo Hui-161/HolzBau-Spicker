@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { rechtwinklig } from './dreieck'
 import { gaubenSparrenliste, grat, gratAnfall, gratKerve, kehlbalken, sattelgaube, schleppgaube, sparren, walmgaube, zeltdach } from './dach'
 import { leseStueckliste, stosse, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
@@ -412,5 +413,14 @@ describe('Hexenschnitt bei lotrechtem Traufabschnitt', () => {
     const fast = grat({ ...e, abschnittHaupt: 124.999, abschnittWalm: 129.999 })
     expect(Math.abs(fast.hexeHaupt - lot.hexeHaupt)).toBeLessThan(0.01)
     expect(() => grat({ ...e, abschnittHaupt: 126 })).toThrow()
+  })
+})
+
+describe('Rechtwinkliges Dreieck: jeder Winkel wird geprüft', () => {
+  it('ein unmöglicher zweiter Winkel wird nicht still übergangen', () => {
+    expect(() => rechtwinklig({ alpha: 50, beta: 800 })).toThrow(/zwischen 0° und 90°/)
+    expect(() => rechtwinklig({ alpha: 50, beta: 30 })).toThrow(/zusammen 90°/)
+    expect(() => rechtwinklig({ alpha: 50, beta: 40 })).toThrow(/mindestens eine Seite/)
+    expect(() => rechtwinklig({ a: 20, beta: 800 })).toThrow(/zwischen 0° und 90°/)
   })
 })

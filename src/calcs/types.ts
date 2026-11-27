@@ -87,6 +87,8 @@ export interface Zeichnung {
 
 export interface Ergebnis {
   ausgaben: Ausgabe[]
+  /** berechnete Werte für Eingabefelder, die der Nutzer leer gelassen hat (Feldkennung → Wert) */
+  berechnet?: Record<string, number>
   /** maßstäbliche Zeichnung zum Ergebnis */
   zeichnung?: Zeichnung
   /** weitere Zeichnungen, z. B. vergrößerte Details */
@@ -113,6 +115,11 @@ export interface Rechner {
   skizze?: string
   /** Werte aus einem anderen Rechner desselben Projekts übernehmen: Quelle und Abbildung auf die eigenen Felder */
   uebernahme?: { von: string; werte: (quelle: Werte) => Record<string, number> | undefined }
+  /**
+   * Von diesen Feldern gelten immer nur die zuletzt eingetragenen „anzahl“ Werte; die übrigen
+   * werden geleert und zeigen den berechneten Wert. So widersprechen sich Eingaben nie.
+   */
+  loese?: { felder: string[]; anzahl: number }
   /** Zeichnung zum Eintragen der Werte, solange noch kein Ergebnis da ist (ersetzt Skizze und Formular) */
   vorschau?: (w: Werte) => Zeichnung | undefined
   /** eigene Ansicht statt Felder + Ergebnis (z. B. Sensor) */

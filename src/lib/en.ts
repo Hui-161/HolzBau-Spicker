@@ -284,8 +284,8 @@ export const EN: Record<string, string> = {
   'Das Maß muss größer als 0 sein.': 'The dimension must be greater than 0.',
   'Rechtwinkliges Dreieck': 'Right triangle',
   'Zwei Werte eingeben, Rest berechnen': 'Enter two values, get the rest',
-  'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. c ist die Hypotenuse, α liegt gegenüber von a.':
-    'Fill in two fields, at least one of them a side. c is the hypotenuse, α is opposite a.',
+  'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Es gelten immer die zwei zuletzt eingetragenen Werte; die übrigen Felder werden geleert und zeigen das Ergebnis. c ist die Hypotenuse, α liegt gegenüber von a.':
+    'Enter two values, at least one of them a side – in the list or by tapping the drawing. The two values entered last always apply; the other fields are cleared and show the result. c is the hypotenuse, α is opposite a.',
   'Seite a': 'Side a',
   'Seite b': 'Side b',
   'Seite c': 'Side c',
@@ -308,8 +308,8 @@ export const EN: Record<string, string> = {
   Inkreisradius: 'Inradius',
   'Allgemeines Dreieck': 'General triangle',
   'Drei Werte eingeben, Rest berechnen': 'Enter three values, get the rest',
-  'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
-    'Fill in three fields, at least one of them a side. Each angle is opposite the side of the same name (α opposite a).',
+  'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Es gelten immer die drei zuletzt eingetragenen Werte; die übrigen Felder werden geleert und zeigen das Ergebnis. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
+    'Enter three values, at least one of them a side – in the list or by tapping the drawing. The three values entered last always apply; the other fields are cleared and show the result. Each angle is opposite the side of the same name (α opposite a).',
   'Seiten müssen größer als 0 sein.': 'Sides must be greater than 0.',
   'Winkel müssen zwischen 0° und 90° liegen.': 'Angles must be between 0° and 90°.',
   'Winkel müssen zwischen 0° und 180° liegen.': 'Angles must be between 0° and 180°.',
@@ -865,4 +865,7 @@ export const EN: Record<string, string> = {
   'Werte aus dem Rechner übernehmen:': 'Take values from calculator:',
   'übernommen': 'applied',
   'Spannweite s und Stichhöhe h in der Liste eintragen oder in der Zeichnung antippen.': 'Enter span s and rise h in the list or tap them in the drawing.',
+  'eingegeben': 'entered',
+  'berechnet': 'calculated',
+  'α und β müssen zusammen 90° ergeben.': 'α and β must add up to 90°.',
 }

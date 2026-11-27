@@ -18,9 +18,11 @@ export function rechtwinklig(e: RwEingabe) {
   // Mehr als zwei Angaben können sich widersprechen – dann lieber nachfragen als still eine ignorieren
   pruefe([e.a, e.b, e.c, e.alpha, e.beta].filter(ok).length <= 2, 'Bitte genau zwei Werte eingeben – weitere Felder leeren.')
   let { a, b, c } = e
-  let alpha = ok(e.alpha) ? e.alpha : ok(e.beta) ? 90 - e.beta : undefined
   for (const s of [a, b, c]) if (ok(s)) pruefe(s > 0, 'Seiten müssen größer als 0 sein.')
-  if (ok(alpha)) pruefe(alpha > 0 && alpha < 90, 'Winkel müssen zwischen 0° und 90° liegen.')
+  // jeden eingetragenen Winkel für sich prüfen – auch β, wenn α schon da ist
+  for (const winkel of [e.alpha, e.beta]) if (ok(winkel)) pruefe(winkel > 0 && winkel < 90, 'Winkel müssen zwischen 0° und 90° liegen.')
+  if (ok(e.alpha) && ok(e.beta)) pruefe(Math.abs(e.alpha + e.beta - 90) < 1e-6, 'α und β müssen zusammen 90° ergeben.')
+  let alpha = ok(e.alpha) ? e.alpha : ok(e.beta) ? 90 - e.beta : undefined
 
   if (ok(a) && ok(b)) {
     c = Math.hypot(a, b)

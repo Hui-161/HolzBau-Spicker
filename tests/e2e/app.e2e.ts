@@ -128,21 +128,35 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   await page.goto('./#/dreieck')
   for (const [mass, wert] of [['a =', '3'], ['b =', '4'], ['c =', '5']]) await trageEin(page, mass, wert)
   await expect(page.locator('.ergebnis')).toContainText('90,00')
-  // überzählige Angabe wird abgelehnt statt still ignoriert; das Bild zum Korrigieren bleibt stehen
-  await trageEin(page, 'α =', '30')
-  await expect(page.locator('.ergebnis .fehler')).toContainText('genau drei Werte')
-  await expect(page.locator('svg.zeichnung')).toHaveCount(1)
-  // Wert wieder leeren: es wird erneut gerechnet
-  await trageEin(page, 'α =', '')
-  await expect(page.locator('.ergebnis dl')).toContainText('90,00')
-  // die Liste ändert die Zeichnung sofort, ohne Bestätigen – auch bei unvollständigen Angaben
+  // Es gelten die drei zuletzt eingetragenen Werte: ein vierter verdrängt den ältesten, dessen Feld wird geleert
   const liste = page.locator('form[data-sprung] input')
-  await liste.nth(2).fill('')
+  await trageEin(page, 'α =', '30')
+  await expect(liste.nth(0)).toHaveValue('') // a war die älteste Eingabe
+  await expect(liste.nth(0)).toHaveAttribute('placeholder', /\d/) // und zeigt jetzt den berechneten Wert
+  await expect(liste.nth(3)).toHaveValue('30')
+  await expect(page.locator('.fehler')).toHaveCount(0)
+  await expect(page.locator('.ergebnis dl')).toBeVisible()
+  await expect(page.locator('svg.zeichnung')).toHaveCount(1)
+  // die Liste ändert die Zeichnung sofort, ohne Bestätigen
   await liste.nth(0).fill('6')
-  await expect(page.locator('svg.zeichnung text.tippbar', { hasText: 'a = 6,0' })).toBeVisible()
-  await expect(page.locator('svg.zeichnung text.tippbar.berechnet', { hasText: 'c =' })).toBeVisible()
-  await liste.nth(2).fill('8')
-  await expect(page.locator('svg.zeichnung text.tippbar', { hasText: 'c = 8,0' })).toBeVisible()
+  await expect(page.locator('svg.zeichnung text.tippbar:not(.berechnet)', { hasText: 'a = 6,0' })).toBeVisible()
+  await expect(liste.nth(1)).toHaveValue('') // jetzt ist b die älteste Eingabe
+  await expect(page.locator('svg.zeichnung text.tippbar.berechnet', { hasText: 'b =' })).toBeVisible()
+  // Wert leeren: nur noch zwei Angaben, es wird nichts Falsches gezeigt
+  await liste.nth(0).fill('')
+  await expect(page.locator('.ergebnis dl')).toHaveCount(0)
+  // unmögliche Eingabe: Meldung direkt unter der Zeichnung, keine Ergebnisliste
+  await page.goto('./#/rechtwinklig')
+  const recht = page.locator('form[data-sprung] input')
+  for (const [n, wert] of [[0, '20'], [1, '60'], [2, '65'], [3, '50'], [4, '800']] as const) await recht.nth(n).fill(wert)
+  await expect(recht.nth(0)).toHaveValue('')
+  await expect(recht.nth(1)).toHaveValue('')
+  await expect(recht.nth(2)).toHaveValue('')
+  await expect(page.locator('.fehler.oben')).toContainText('zwischen 0° und 90°')
+  await expect(page.locator('.ergebnis dl')).toHaveCount(0)
+  await recht.nth(4).fill('')
+  await recht.nth(0).fill('20')
+  await expect(page.locator('.ergebnis dl')).toContainText('16,8') // b = 20 / tan 50°
 })
 
 test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {

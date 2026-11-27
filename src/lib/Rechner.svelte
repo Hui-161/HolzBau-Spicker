@@ -65,7 +65,38 @@
 
   function leere() {
     roh = vorgaben()
+    gegebenIds = []
     merke()
+  }
+
+  // Rechner mit „loese“: Es gelten nur die zuletzt eingetragenen Werte. Wird ein weiterer eingetragen,
+  // fällt der älteste heraus und sein Feld wird geleert – so stehen nie widersprüchliche Eingaben da.
+  // svelte-ignore state_referenced_locally
+  const loeseFelder = rechner.loese?.felder ?? []
+  // gespeicherte Reihenfolge (neueste zuerst); ohne sie gelten die ausgefüllten Felder in Feldreihenfolge
+  // svelte-ignore state_referenced_locally
+  let gegebenIds = $state<string[]>(
+    (() => {
+      const voll = (id: string): boolean => (roh[id] ?? '').trim() !== ''
+      const gemerkt = (roh._gegeben ?? '').split(',').filter((id) => loeseFelder.includes(id) && voll(id))
+      const g = [...gemerkt, ...loeseFelder.filter((id) => voll(id) && !gemerkt.includes(id))].slice(0, rechner.loese?.anzahl ?? 0)
+      // beim Öffnen bereinigen: überzählige Altwerte leeren
+      for (const id of loeseFelder) if (!g.includes(id)) roh[id] = ''
+      return g
+    })()
+  )
+  function geaendert(id: string) {
+    if (!rechner.loese || !loeseFelder.includes(id)) return
+    const rest = gegebenIds.filter((x) => x !== id)
+    const g = (roh[id] ?? '').trim() === '' ? rest : [id, ...rest]
+    for (const raus of g.slice(rechner.loese.anzahl)) roh[raus] = ''
+    gegebenIds = g.slice(0, rechner.loese.anzahl)
+    roh._gegeben = gegebenIds.join(',')
+  }
+  /** berechneter Wert für ein leeres Feld, als Text wie in der Ergebnisliste */
+  const berechnetText = (f: Feld): string => {
+    const wert = 'ergebnis' in stand && (roh[f.id] ?? '').trim() === '' ? stand.ergebnis.berechnet?.[f.id] : undefined
+    return wert === undefined || !Number.isFinite(wert) || f.art === 'select' || f.art === 'liste' ? '' : formatiere(wert, f.art)
   }
 
   const listen = (e: Ergebnis): Liste[] => [...(e.liste ? [e.liste] : []), ...(e.listen ?? [])]
@@ -106,6 +137,7 @@
   function uebernimm() {
     if (offenesMass) {
       roh[offenesMass.feld] = entwurf
+      geaendert(offenesMass.feld)
       merke()
     }
     offenesMass = null
@@ -251,6 +283,7 @@
   <!-- eine Zeichnung statt Skizze: sie zeigt den Stand der Eingaben und folgt jeder Änderung sofort -->
   {@const oben = ('ergebnis' in stand ? stand.ergebnis.zeichnung : undefined) ?? rechner.vorschau(werte)}
   {#if oben}<div class="bild-oben" data-sprung="z0">{@render bild(oben, 0)}</div>{/if}
+  {#if 'fehler' in stand}<p class="fehler oben" role="alert">{t(stand.fehler)}</p>{/if}
 {/if}
 
 {#if angebot && quelle}
@@ -264,7 +297,9 @@
 <form data-sprung="eingabe" onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke} onkeydown={weiter}>
   {#each imFormular as f (f.id)}
     <label class:falsch={ungueltig(f)} class:breit={f.art === 'liste'}>
-      <span class="name">{t(f.label)}{#if f.optional}<em> · {t('freiwillig')}</em>{/if}</span>
+      <span class="name"
+        >{t(f.label)}{#if loeseFelder.includes(f.id)}{#if gegebenIds.includes(f.id)}<em> · {t('eingegeben')}</em>{:else if berechnetText(f)}<em> · {t('berechnet')}</em>{/if}{:else if f.optional}<em> · {t('freiwillig')}</em>{/if}</span
+      >
       {#if f.art === 'select'}
         <select bind:value={roh[f.id]} onchange={() => belege(f)}>
           {#each f.optionen ?? [] as o (o.wert)}
@@ -275,7 +310,7 @@
         <textarea rows="5" autocomplete="off" spellcheck="false" bind:value={roh[f.id]}></textarea>
       {:else}
         <span class="feld">
-          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="next" bind:value={roh[f.id]} oninput={() => loese(f.id)} onfocus={(e) => e.currentTarget.select()} />
+          <input type="text" inputmode={f.art === 'int' ? 'numeric' : 'decimal'} autocomplete="off" enterkeyhint="next" bind:value={roh[f.id]} placeholder={berechnetText(f)} oninput={() => (loese(f.id), geaendert(f.id))} onfocus={(e) => e.currentTarget.select()} />
           <span class="einheit">{einheitVon(f.art, f.einheit)}</span>
         </span>
       {/if}
@@ -296,7 +331,7 @@
 
 <section class="ergebnis" aria-live="polite">
   {#if 'fehler' in stand}
-    <p class="fehler">{t(stand.fehler)}</p>
+    {#if !rechner.vorschau}<p class="fehler">{t(stand.fehler)}</p>{/if}
   {:else if 'offen' in stand}
     <p class="offen">{t('Werte eingeben – das Ergebnis erscheint sofort.')}</p>
   {:else}
@@ -488,6 +523,14 @@
   }
   :global([data-sprung]) {
     scroll-margin-top: 4.5rem;
+  }
+  .fehler.oben {
+    margin: 0 0 0.75rem;
+  }
+  input::placeholder {
+    color: var(--leise);
+    opacity: 1;
+    font-style: italic;
   }
   .bild-oben {
     margin-bottom: 0.75rem;

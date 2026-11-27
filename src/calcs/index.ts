@@ -822,10 +822,11 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'rechtwinklig',
+    loese: { felder: ['a', 'b', 'c', 'alpha', 'beta'], anzahl: 2 },
     titel: 'Rechtwinkliges Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Zwei Werte eingeben, Rest berechnen',
-    info: 'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. c ist die Hypotenuse, α liegt gegenüber von a.',
+    info: 'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Es gelten immer die zwei zuletzt eingetragenen Werte; die übrigen Felder werden geleert und zeigen das Ergebnis. c ist die Hypotenuse, α liegt gegenüber von a.',
     // Eingabebild: feste Form, die Werte stehen als antippbare Maße daran
     vorschau: (w) => {
       // Form aus dem, was schon eingetragen ist: Katheten direkt, sonst aus Winkel oder im Verhältnis 3 : 5
@@ -850,6 +851,7 @@ export const RECHNER: Rechner[] = [
     rechne: (w) => {
       const r = rechtwinklig({ a: opt(w, 'a'), b: opt(w, 'b'), c: opt(w, 'c'), alpha: opt(w, 'alpha'), beta: opt(w, 'beta') })
       return {
+        berechnet: { a: r.a, b: r.b, c: r.c, alpha: r.alpha, beta: r.beta },
         zeichnung: zeichneDreieck(r.a, r.b, r.c, r.alpha, { feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta' }, gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta']) }),
         ausgaben: [L('a', r.a), L('b', r.b), L('c', r.c, true), W('α', r.alpha, true), W('β', r.beta), { label: 'Fläche', wert: r.flaeche, art: 'area' }, L('Umfang', r.umfang), L('Höhe auf c', r.hoeheC)],
       }
@@ -857,10 +859,11 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'dreieck',
+    loese: { felder: ['a', 'b', 'c', 'alpha', 'beta', 'gamma'], anzahl: 3 },
     titel: 'Allgemeines Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Drei Werte eingeben, Rest berechnen',
-    info: 'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
+    info: 'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Es gelten immer die drei zuletzt eingetragenen Werte; die übrigen Felder werden geleert und zeigen das Ergebnis. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
     vorschau: (w) => {
       // Form aus den schon eingetragenen Seiten; fehlende im Verhältnis 9 : 11 : 14 dazu, solange ein Dreieck entsteht
       const gegebenS = [opt(w, 'a'), opt(w, 'b'), opt(w, 'c')].map((x) => (x !== undefined && x > 0 ? x : undefined))
@@ -886,6 +889,7 @@ export const RECHNER: Rechner[] = [
     rechne: (w) => {
       const r = dreieck({ a: opt(w, 'a'), b: opt(w, 'b'), c: opt(w, 'c'), alpha: opt(w, 'alpha'), beta: opt(w, 'beta'), gamma: opt(w, 'gamma') })
       return {
+        berechnet: { a: r.a, b: r.b, c: r.c, alpha: r.alpha, beta: r.beta, gamma: r.gamma },
         zeichnung: zeichneDreieck(r.a, r.b, r.c, r.alpha, { feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta', gamma: 'gamma' }, gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta', 'gamma']) }),
         ausgaben: [
           L('a', r.a),
