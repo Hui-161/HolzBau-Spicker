@@ -951,4 +951,6 @@ export const EN: Record<string, string> = {
   'eigener Teiler (Höhe = Spannweite / Teiler)': 'own divisor (depth = span / divisor)',
   'für die Breite': 'for the width',
   'gerechnet mit Spannweite geteilt durch': 'calculated with span divided by',
+  'Detail Querschnitt mit Richtwerten': 'Detail: cross-section with guide values',
+  'Detail Querschnitt – Breite nur angedeutet': 'Detail: cross-section – width only indicated',
 }

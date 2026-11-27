@@ -5,7 +5,7 @@ import { gelaenderstaebe, holzmenge, leseLaengen, massstab, treppe } from '../co
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { FAUSTREGELN, vorbemessung, type Faustbauteil } from '../core/vorbemessung'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneTreppe, zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
+import { zeichneQuerschnitt, zeichneTraeger, zeichneTreppe, zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -1083,6 +1083,7 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'vorbemessung',
+    beispiel: { l: 480 },
     titel: 'Vorbemessung (Faustformel)',
     gruppe: 'Sonstiges',
     kurz: 'Trägerhöhe grob aus der Spannweite – kein Nachweis',
@@ -1114,7 +1115,10 @@ export const RECHNER: Rechner[] = [
       // der Rechenkern arbeitet in cm (Zuschläge und Mindestmaße der Formeln sind in cm angegeben)
       const r = vorbemessung(bt, zahl(w, 'l') / k.jeCm, bt === 'frei' ? zahl(w, 'n') : undefined, e === undefined ? undefined : e / k.jeCm)
       const cm = (label: string, wert: number, wichtig = false): Ausgabe => L(label, wert * k.jeCm, wichtig)
+      const mitB = r.breiteVon !== undefined && r.breiteBis !== undefined
       return {
+        zeichnung: zeichneTraeger(zahl(w, 'l'), r.hoehe * k.jeCm),
+        details: detail(mitB ? 'Detail Querschnitt mit Richtwerten' : 'Detail Querschnitt – Breite nur angedeutet', zeichneQuerschnitt(r.hoehe * k.jeCm, mitB ? (r.breiteVon as number) * k.jeCm : undefined, mitB ? (r.breiteBis as number) * k.jeCm : undefined)),
         ausgaben: [
           cm('Querschnittshöhe, Richtwert', r.hoehe, true),
           ...(r.breiteVon !== undefined && r.breiteBis !== undefined

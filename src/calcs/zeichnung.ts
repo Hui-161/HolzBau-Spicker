@@ -1451,3 +1451,52 @@ export function zeichneTreppe(steigungen: number, steigung: number, auftritt: nu
   }
   return b.fertig()
 }
+
+/** Träger auf zwei Auflagern in der Ansicht: Spannweite und Querschnittshöhe, maßstäblich. */
+export function zeichneTraeger(spannweite: number, hoehe: number): Zeichnung | undefined {
+  if (!gueltig(spannweite, hoehe) || !(spannweite > 0) || !(hoehe > 0)) return undefined
+  // Auflager als Dreiecke unter den Trägerenden; ihre Größe ist nur Darstellung
+  const a = Math.max(spannweite * 0.035, hoehe * 0.5)
+  const b = blatt([[-a, -a * 1.4], [spannweite + a, hoehe]], { l: 20, r: 44, o: 20, u: 36 })
+  const auflager = (x: number): void => {
+    b.zug([[x, 0], [x - a * 0.7, -a * 1.2], [x + a * 0.7, -a * 1.2]], 'fill="#fff" stroke="#111" stroke-width="0.8" stroke-linejoin="round"', true)
+    b.zug([[x - a, -a * 1.2], [x + a, -a * 1.2]], LINIE)
+  }
+  auflager(0)
+  auflager(spannweite)
+  b.zug([[-a * 0.6, 0], [spannweite + a * 0.6, 0], [spannweite + a * 0.6, hoehe], [-a * 0.6, hoehe]], FLAECHE, true)
+  b.kette([[0, -a * 1.2], [spannweite, -a * 1.2]], { h: b.kante.unten + KETTE_1 }, { feld: ['l'] })
+  b.kette([[spannweite + a * 0.6, 0], [spannweite + a * 0.6, hoehe]], { v: b.kante.rechts + KETTE_1 })
+  return b.fertig()
+}
+
+/**
+ * Trägerquerschnitt mit Höhe und, soweit die Faustformel eine nennt, Breite (von–bis).
+ * Ohne Breitenangabe ist die Breite nur angedeutet.
+ */
+export function zeichneQuerschnitt(hoehe: number, breiteVon?: number, breiteBis?: number): Zeichnung | undefined {
+  if (!gueltig(hoehe) || !(hoehe > 0)) return undefined
+  const mitBreite = breiteVon !== undefined && breiteBis !== undefined && breiteVon > 0
+  const breit = mitBreite ? (breiteBis as number) : hoehe * 0.5
+  const schmal = mitBreite ? (breiteVon as number) : breit
+  const ecken = (w: number): Punkt[] => [[-w / 2, 0], [w / 2, 0], [w / 2, hoehe], [-w / 2, hoehe]]
+  const b = blatt([[-hoehe * 0.9, 0], [hoehe * 0.9, hoehe]], { l: 30, r: 44, o: 20, u: 50 })
+  if (mitBreite) {
+    b.zug(ecken(breit), FLAECHE, true)
+    kreuz(b, ecken(breit))
+    // kleinste Breite gestrichelt im größten Querschnitt
+    if (breit - schmal > 1e-9) {
+      b.zug([[-schmal / 2, 0], [-schmal / 2, hoehe]], HILF)
+      b.zug([[schmal / 2, 0], [schmal / 2, hoehe]], HILF)
+      b.kette([[-schmal / 2, 0], [schmal / 2, 0]], { h: b.kante.unten + KETTE_1 })
+      b.kette([[-breit / 2, 0], [breit / 2, 0]], { h: b.kante.unten + KETTE_2 })
+    } else {
+      b.kette([[-breit / 2, 0], [breit / 2, 0]], { h: b.kante.unten + KETTE_1 })
+    }
+  } else {
+    b.zug(ecken(breit), SCHNITT, true)
+    kreuz(b, ecken(breit))
+  }
+  b.kette([[breit / 2, 0], [breit / 2, hoehe]], { v: b.kante.rechts + KETTE_1 })
+  return b.fertig()
+}
