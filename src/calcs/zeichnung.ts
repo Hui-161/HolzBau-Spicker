@@ -227,16 +227,30 @@ function blatt(punkte: Punkt[], rand: Rand) {
 }
 
 /**
- * Kettenmaß an einem Riss: Lage ab Traufpunkt entlang der Sparrenkante, über der Oberkante
- * in Sparrenrichtung geschrieben. seite = 1 schreibt bergauf vom Punkt weg, -1 endet am Punkt.
+ * Kettenmaß an einem Riss: Hinweislinie winkelrecht von der Oberkante weg, daran entlang das Maß
+ * ab Traufpunkt. Ein Pfeil an der Kante zeigt, aus welcher Richtung gemessen wird.
  */
-function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert: number, seite: 1 | -1 = 1): void {
+function lageAn(b: ReturnType<typeof blatt>, p: Punkt, neigungGrad: number, wert: number, seite: 0 | 1 | -1 = 0): void {
   const r = (neigungGrad * Math.PI) / 180
   const [x, y] = b.px(p)
-  const [ab, laengs] = [8, 4 * seite]
-  b.mass({ x: x - Math.sin(r) * ab + Math.cos(r) * laengs, y: y - Math.cos(r) * ab - Math.sin(r) * laengs, wert, art: 'len', drehung: -neigungGrad, anker: seite === 1 ? 'start' : 'end', name: 'ab Traufpunkt', klein: true })
-  // kurzer Strich am Riss über die Kante hinaus
-  b.roh(`<path ${STRICH} d="M${f1(x)},${f1(y)} L${f1(x - Math.sin(r) * 5)},${f1(y - Math.cos(r) * 5)}"/>`)
+  // n = von der Kante weg, u = die Kante bergauf (Zeichnungseinheiten, y nach unten)
+  const n: Punkt = [-Math.sin(r), -Math.cos(r)]
+  const u: Punkt = [Math.cos(r), -Math.sin(r)]
+  const lang = 58
+  const auf = (weg: number, laengs: number): Punkt => [x + n[0] * weg + u[0] * laengs, y + n[1] * weg + u[1] * laengs]
+  const linie = (ps: Punkt[], stil: string): void => b.roh(`<path ${stil} d="M${ps.map(([px_, py]) => `${f1(px_)},${f1(py)}`).join(' L')}"/>`)
+  linie([auf(0, 0), auf(lang, 0)], 'fill="none" stroke="#000" stroke-width="0.5"')
+  // Messrichtung: Pfeil entlang der Kante von der Traufe her
+  if (seite !== 1) {
+    linie([auf(6, -26), auf(6, -3)], 'fill="none" stroke="#000" stroke-width="0.5"')
+    linie([auf(4, -8), auf(6, -3), auf(8, -8)], 'fill="none" stroke="#000" stroke-width="0.5" stroke-linejoin="round"')
+  }
+  // seite 0: Zahl bergauf, Text bergab der Linie; stehen zwei Linien dicht beieinander, schreibt jede nur auf ihre Außenseite
+  const drehung = 90 - neigungGrad
+  const [zx, zy] = auf(lang / 2 + 7, seite === -1 ? -6 : 6)
+  b.mass({ x: zx, y: zy, wert, art: 'len', drehung })
+  const [tx, ty] = auf(lang / 2 + 7, seite === 0 ? -5.5 : 16 * seite)
+  b.mass({ x: tx, y: ty, wert: 0, art: 'len', text: 'ab Traufpunkt', drehung, klein: true })
 }
 
 /** Waagerechte von der Kerve nach rechts; die Neigung steht darunter, wo nichts anderes liegt. */
@@ -396,7 +410,7 @@ export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: n
     [-xk, yk - firstpfette],
     [xk, yk - firstpfette],
   ]
-  const b = blatt([...sparren, ...(firstpfette > 0 ? pfette : []), [sparrenhoehe * 1.2 * cos, 0]], { l: 46, r: 68, o: 30, u: 36 })
+  const b = blatt([...sparren, ...(firstpfette > 0 ? pfette : []), [sparrenhoehe * 1.2 * cos, 0]], { l: 46, r: 40, o: 66, u: 36 })
   if (firstpfette > 0) {
     b.zug(pfette, SCHNITT, true)
     kreuz(b, pfette)
@@ -417,8 +431,8 @@ export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: n
     b.kette([p, [p[0] - sparrenhoehe * sin, p[1] + sparrenhoehe * cos]], { p: 13 }, { werte: [sparrenhoehe], feld: ['h'] })
   }
   if (mitKerve) b.zug([[xk, yk], [xk, xk * t]], HILF)
-  // am Firstpunkt waagerecht über der Spitze, damit es nicht aus dem Blatt läuft
-  if (lageFirst !== undefined) b.mass({ ...ort(b, [0, 0], -12, -10), wert: lageFirst, art: 'len', anker: 'start', name: 'ab Traufpunkt', klein: true })
+  const zwei = lageKerve !== undefined && firstpfette > 0
+  if (lageFirst !== undefined) lageAn(b, [0, 0], neigungGrad, lageFirst, zwei ? 1 : 0)
   if (lageKerve !== undefined && firstpfette > 0) lageAn(b, [xk, xk * t], neigungGrad, lageKerve, -1)
   return b.fertig()
 }
@@ -798,7 +812,7 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
     [pf, -pf],
     [0, -pf],
   ]
-  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 24, u: 34 })
+  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 30, u: 34 })
   b.zug(pfette, SCHNITT, true)
   kreuz(b, pfette)
   b.zug(sparren, FLAECHE, true)
