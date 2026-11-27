@@ -18,6 +18,7 @@ const BEISPIELE: Record<string, string[]> = {
   sparreneinteilung: ['1000', '8', '0', '80'],
   '345': ['240'],
   treppe: ['280'],
+  vorbemessung: ['480', '24'],
   gelaender: ['300', '2', '12'],
   holz: ['8', '16', '5', '10', '470'],
   massstab: ['2.5', '50'],

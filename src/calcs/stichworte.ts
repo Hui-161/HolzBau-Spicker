@@ -24,6 +24,7 @@ export const STICHWORTE: Record<string, string[]> = {
   bogen: ['Rundbogen', 'Segmentbogen', 'Kreisbogen', 'Bogenradius', 'Radius', 'Sehne', 'Pfeilhöhe', 'Stichhöhe', 'Tonnendach', 'Bogenfenster', 'arch'],
   neigungsmesser: ['Wasserwaage', 'Winkelmesser', 'Neigung messen', 'Libelle', 'Lot', 'Sensor', 'Inklinometer', 'Gefälle messen', 'spirit level', 'inclinometer'],
   gelaender: ['Geländer', 'Stäbe', 'Sprossen', 'Staketen', 'Baluster', 'Brüstung', 'Handlauf', 'Treppengeländer', 'Stababstand', 'railing', 'balusters'],
+  vorbemessung: ['Faustformel', 'Faustregel', 'Statik', 'Träger', 'Trägerhöhe', 'Balkenhöhe', 'Querschnitt', 'Dimensionierung', 'Vordimensionierung', 'Unterzug', 'Deckenbalken', 'Spannweite', 'l/24', 'preliminary sizing'],
   treppe: ['Lauflänge', 'Wange', 'Treppenrechner', 'Stufen', 'Stufenhöhe', 'Steigung', 'Auftritt', 'Schrittmaß', 'Schrittmaßregel', 'Treppenwange', 'Geschosshöhe', 'Blockstufe', 'stairs', 'staircase'],
   holz: ['Kubikmeter', 'Festmeter', 'cbm', 'm³', 'Volumen', 'Gewicht', 'Laufmeter', 'lfm', 'Kantholz', 'Balken', 'Rohdichte', 'Holzliste', 'Holzbedarf', 'Bestellung', 'timber', 'lumber'],
   massstab: ['Plan', 'Zeichnung', 'Umrechnung', 'Planmaß', '1:50', '1:100', 'M 1:', 'scale'],

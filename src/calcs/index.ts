@@ -3,6 +3,7 @@ import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from '../core/
 import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
 import { gelaenderstaebe, holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
+import { FAUSTREGELN, vorbemessung, type Faustbauteil } from '../core/vorbemessung'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
 import { zeichneTreppe, zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
@@ -1077,6 +1078,54 @@ export const RECHNER: Rechner[] = [
           ...(neigung > 0 ? [L('Lichter Abstand entlang der Schräge', r.schraeg.licht), L('Achsmaß entlang der Schräge', r.schraeg.achsmass), L('Länge zwischen den Pfosten entlang der Schräge', r.schraeg.laenge)] : []),
         ],
         liste: laufListe('Stab', lauf, seite(w)),
+      }
+    },
+  },
+  {
+    id: 'vorbemessung',
+    titel: 'Vorbemessung (Faustformel)',
+    gruppe: 'Sonstiges',
+    kurz: 'Trägerhöhe grob aus der Spannweite – kein Nachweis',
+    info: 'Faustformeln geben nur eine erste Größenordnung für die Querschnittshöhe. Lasten, Holzgüte, Auflager, Durchbiegung, Schwingung und Brandschutz gehen nicht ein. Das Ergebnis ist kein statischer Nachweis und darf nicht als Bemessung verwendet werden; den Querschnitt legt die Tragwerksplanung fest. Die festen Formeln stammen aus einem Hochschulskript zur Vordimensionierung (Tragwerkslehre, Hochschule Ostwestfalen-Lippe): Holzbalkendecke für Wohnräume, Holzbalkenflachdach nach Dachlast, Sparren mit Dachausbau bei 60 bis 90 cm Abstand, Kehlbalken mit Spitzbodenlast. Mit „eigener Teiler“ rechnest du mit deinem eigenen Erfahrungswert.',
+    felder: [
+      {
+        id: 'bt',
+        label: 'Bauteil',
+        art: 'select',
+        vorgabe: 'frei',
+        optionen: [
+          { wert: 'frei', label: 'eigener Teiler (Höhe = Spannweite / Teiler)' },
+          { wert: 'decke', label: 'Holzbalkendecke Wohnraum: l/20' },
+          { wert: 'flachLeicht', label: 'Holzbalken-Flachdach, leichte Dachlast: l/24' },
+          { wert: 'flachMittel', label: 'Holzbalken-Flachdach, mittlere Dachlast: l/20' },
+          { wert: 'flachSchwer', label: 'Holzbalken-Flachdach, schwere Dachlast: l/16' },
+          { wert: 'sparrenSparrendach', label: 'Sparren im Sparrendach: s/24 + 2 cm' },
+          { wert: 'sparrenPfettendach', label: 'Sparren im Pfettendach: größte Stützweite / 24' },
+          { wert: 'kehlbalken', label: 'Kehlbalken mit Spitzbodenlast: l/20' },
+        ],
+      },
+      { id: 'l', label: 'Spannweite', art: 'len', hinweis: 'Stützweite zwischen den Auflagern; beim Sparren die Sparrenlänge bzw. größte Stützweite' },
+      { id: 'n', label: 'Teiler', art: 'num', vorgabe: 24, hinweis: 'Höhe = Spannweite geteilt durch diesen Wert', wenn: (w) => (w.bt ?? 'frei') === 'frei' },
+      { id: 'e', label: 'Achsabstand', art: 'len', optional: true, hinweis: 'für die Breite', wenn: (w) => w.bt === 'sparrenSparrendach' || w.bt === 'sparrenPfettendach' || w.bt === 'kehlbalken' },
+    ],
+    rechne: (w, k) => {
+      const bt = (typeof w.bt === 'string' && w.bt in FAUSTREGELN ? w.bt : 'frei') as Faustbauteil
+      const e = opt(w, 'e')
+      // der Rechenkern arbeitet in cm (Zuschläge und Mindestmaße der Formeln sind in cm angegeben)
+      const r = vorbemessung(bt, zahl(w, 'l') / k.jeCm, bt === 'frei' ? zahl(w, 'n') : undefined, e === undefined ? undefined : e / k.jeCm)
+      const cm = (label: string, wert: number, wichtig = false): Ausgabe => L(label, wert * k.jeCm, wichtig)
+      return {
+        ausgaben: [
+          cm('Querschnittshöhe, Richtwert', r.hoehe, true),
+          ...(r.breiteVon !== undefined && r.breiteBis !== undefined
+            ? Math.abs(r.breiteBis - r.breiteVon) < 1e-9
+              ? [cm(bt.startsWith('flach') ? 'Querschnittsbreite, Richtwert mindestens' : 'Querschnittsbreite, Richtwert', r.breiteVon)]
+              : [cm('Querschnittsbreite, Richtwert von', r.breiteVon), cm('Querschnittsbreite, Richtwert bis', r.breiteBis)]
+            : []),
+          { label: 'gerechnet mit Spannweite geteilt durch', wert: r.teiler, art: 'num', stellen: 1 },
+          ...(r.zuschlag > 0 ? [cm('Zuschlag der Formel', r.zuschlag)] : []),
+        ],
+        hinweise: ['Vorbemessung nach Faustformel – kein statischer Nachweis. Querschnitt, Holzgüte und Anschlüsse legt die Tragwerksplanung fest.'],
       }
     },
   },
