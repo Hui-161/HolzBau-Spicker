@@ -19,6 +19,7 @@
 
   const werte = $derived<Werte>(Object.fromEntries(rechner.felder.map((f) => [f.id, istText(f) ? (roh[f.id] ?? '') : leseZahl(roh[f.id] ?? '')])))
   const sichtbar = $derived(rechner.felder.filter((f) => !f.wenn || f.wenn(werte)))
+  const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze))
   const ungueltig = (f: Feld): boolean => !istText(f) && (roh[f.id] ?? '').trim() !== '' && Number.isNaN(werte[f.id])
 
   type Stand = { ergebnis: Ergebnis } | { fehler: string } | { offen: true }
@@ -101,6 +102,27 @@
     el.select()
   }
 
+  // Auswahl in der Skizze: Elemente mit data-feld/data-wert setzen das zugehörige Auswahlfeld
+  let skizze = $state<SVGSVGElement | null>(null)
+  const waehlbar = $derived(rechner.felder.some((f) => f.inSkizze))
+  function waehle(e: Event) {
+    const ziel = (e.target as Element).closest<SVGElement>('[data-feld]')
+    if (!ziel || (e instanceof KeyboardEvent && e.key !== 'Enter' && e.key !== ' ')) return
+    e.preventDefault()
+    roh[ziel.dataset.feld as string] = ziel.dataset.wert as string
+    merke()
+  }
+  $effect(() => {
+    void zustand.sprache
+    for (const el of skizze?.querySelectorAll<SVGElement>('[data-feld]') ?? []) {
+      const gewaehlt = roh[el.dataset.feld as string] === el.dataset.wert
+      el.classList.toggle('gewaehlt', gewaehlt)
+      el.setAttribute('role', 'radio')
+      el.setAttribute('aria-checked', String(gewaehlt))
+      el.setAttribute('tabindex', '0')
+    }
+  })
+
   const fav = $derived(zustand.favoriten.includes(rechner.id))
 </script>
 
@@ -154,11 +176,18 @@
 {/snippet}
 
 {#if rechner.skizze}
-  <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${t(rechner.titel)}`}>{@html tSkizze(rechner.skizze)}</svg>
+  {#if waehlbar}
+    <!-- die Seiten selbst sind fokussierbar (tabindex im Effekt), die Gruppe nicht -->
+    <!-- svelte-ignore a11y_interactive_supports_focus -->
+    <svg bind:this={skizze} class="skizze waehlbar" viewBox="0 0 240 120" role="radiogroup" aria-label={t(rechner.felder.find((f) => f.inSkizze)?.label ?? '')} onclick={waehle} onkeydown={waehle}>{@html tSkizze(rechner.skizze)}</svg>
+    <p class="legende">{t('Seite antippen, deren Maß bekannt ist')}</p>
+  {:else}
+    <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${t(rechner.titel)}`}>{@html tSkizze(rechner.skizze)}</svg>
+  {/if}
 {/if}
 
 <form onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke}>
-  {#each sichtbar as f (f.id)}
+  {#each imFormular as f (f.id)}
     <label class:falsch={ungueltig(f)} class:breit={f.art === 'liste'}>
       <span class="name">{t(f.label)}{#if f.optional}<em> · {t('freiwillig')}</em>{/if}</span>
       {#if f.art === 'select'}
@@ -318,6 +347,25 @@
     max-width: 22rem;
     margin: 0 auto 0.75rem;
     color: var(--leise);
+  }
+  .skizze.waehlbar :global([data-feld]) {
+    cursor: pointer;
+    outline: none;
+  }
+  /* breitere Trefferfläche für den Finger */
+  .skizze.waehlbar :global([data-feld] path) {
+    pointer-events: stroke;
+    stroke-width: 2;
+  }
+  .skizze.waehlbar :global([data-feld].gewaehlt) {
+    color: var(--akzent);
+    font-weight: 700;
+  }
+  .skizze.waehlbar :global([data-feld].gewaehlt path) {
+    stroke-width: 4;
+  }
+  .skizze.waehlbar :global([data-feld]:focus-visible text) {
+    text-decoration: underline;
   }
   form {
     display: grid;

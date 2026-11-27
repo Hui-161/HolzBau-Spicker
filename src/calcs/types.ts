@@ -18,6 +18,8 @@ export interface Feld {
   optionen?: { wert: string; label: string }[]
   optional?: boolean
   hinweis?: string
+  /** Auswahl wird in der Skizze getroffen (Elemente mit data-feld/data-wert), das Auswahlfeld entfällt */
+  inSkizze?: boolean
   /** Feld nur anzeigen, wenn die Bedingung erfüllt ist */
   wenn?: (w: Werte) => boolean
 }

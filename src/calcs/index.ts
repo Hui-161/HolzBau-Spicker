@@ -53,7 +53,7 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Dach',
     kurz: 'Länge, Kerve, Obholz, Schnitte',
     info: 'Grundmaß und Überstand waagerecht messen, ab Außenkante Fußpfette. Die Kerventiefe wird winkelrecht zur Sparrenunterkante gemessen. Mittel- und Firstpfette bekommen dieselbe Kerventiefe wie die Fußpfette; ihre Oberkanten liegen dann um die angegebene Höhe über der Fußpfette. Anriss: Alle Lagen gelten entlang der Sparrenkante ab dem Senkel durch den Traufpunkt, an Ober- und Unterkante gleich – auch wenn die Traufe winkelrecht oder mit Waagschnitt abgeschnitten wird. Auf dem Kervensenkel das Obholz von der Oberkante herunter messen, das ergibt die Kervenecke; von dort läuft der Waagriss zur Unterkante. Am Alphawinkel die Dachneigung einstellen: Der Waagriss liegt im Winkel der Dachneigung zur Sparrenkante, der Senkelriss rechtwinklig dazu. Die Skala des eigenen Winkels vorher an einem bekannten Riss prüfen.',
-    skizze: `<path ${S} d="M20 100 L150 22 L150 100"/><path ${D} d="M20 100 H150"/><text ${T} x="72" y="114">Grundmaß</text><text ${T} x="156" y="66">Firsthöhe</text><text ${T} x="40" y="50">Sparrenlänge</text><text ${T} x="44" y="96">α</text>`,
+    skizze: `<path ${S} d="M20 100 L150 22 L150 100"/><path ${D} d="M20 100 H150"/><text ${T} x="72" y="114">Grundmaß</text><text ${T} x="156" y="66">Firsthöhe</text><text ${T} text-anchor="middle" x="80" y="52" transform="rotate(-31 80 52)">Sparrenlänge</text><text ${T} x="44" y="96">α</text>`,
     felder: [
       { id: 'g', label: 'Grundmaß', art: 'len', hinweis: 'Außenkante Fußpfette bis Firstmitte' },
       { id: 'a', label: 'Dachneigung', art: 'ang', vorgabe: 35 },
@@ -158,7 +158,7 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Dach',
     kurz: 'Gratlänge, Gratneigung, Abgratung',
     info: 'Gilt für Grat und Kehle, auch bei ungleichen Dachneigungen. Die Abgratung ist lotrecht gemessen. Die Gratverschiebung ist ein Grundrissmaß quer zur Gratlinie. Der Verstich ist ein Grundrissmaß in Gratrichtung: der Versatz der Sparrenkante gegenüber der Achse an der Traufe. Der Hexenschnitt wird an der Seitenfläche zur Gratoberkante angerissen. Am Anfallspunkt endet der Grat mit zwei lotrechten Backen, die sich auf der Achse treffen; gerechnet ist bis zum Anfallspunkt, halbe Holzstärken der anschließenden Hölzer selbst abziehen. Die Kerve bezieht sich auf die Außenecke der Fußpfetten: An jeder Seitenfläche sitzt ihr Senkelriss um den Verstich weiter innen, das Obholz gilt dort ab der abgegrateten Kante. Die Details 4 bis 6 gelten für den Grat, nicht für die Kehle. Die Schifterliste gilt für den Grat: Länge der Schifterachse in der Dachfläche ab Traufe, ohne Überstand. Die Lage ist immer ab Gratfuß angegeben, auch wenn das Raster am Anfallspunkt beginnt.',
-    skizze: `<path ${S} d="M20 100 H200 V25"/><path ${S} d="M200 100 L110 25 H200"/><path ${D} d="M110 25 V100"/><text ${T} x="114" y="114">Grundmaß Walm</text><text ${T} x="20" y="66">Grundmaß HD</text><text ${T} x="160" y="52">Grat</text><text ${T} x="40" y="96">Traufe Hauptdach</text>`,
+    skizze: `<path ${S} d="M20 100 H200 V25"/><path ${S} d="M200 100 L110 25 H200"/><path ${D} d="M110 25 V100"/><text ${T} text-anchor="end" x="200" y="16">Grundmaß Walm</text><text ${T} x="20" y="66">Grundmaß HD</text><text ${T} x="160" y="52">Grat</text><text ${T} x="20" y="115">Traufe Hauptdach</text>`,
     felder: [
       { id: 'ah', label: 'Neigung Hauptdach', art: 'ang', vorgabe: 35 },
       { id: 'aw', label: 'Neigung Walm', art: 'ang', vorgabe: 35 },
@@ -276,7 +276,7 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Dach',
     kurz: 'Länge und Abschnitt zwischen den Sparren',
     info: 'Bezugslinie ist die Höhe, auf der die lichte Weite zwischen den Sparrenunterkanten gemessen wird (z. B. Oberkante Fußpfette oder Decke). Der Kehlbalken sitzt stumpf zwischen den Sparren; für Zangen die Sparrenbreiten selbst zugeben.',
-    skizze: `<path ${S} d="M20 105 L120 20 L220 105"/><path ${S} d="M67 65 H173 M79 55 H161"/><path ${D} d="M20 105 H220"/><text ${T} x="92" y="118">lichte Weite</text><text ${T} x="94" y="80">Kehlbalken</text>`,
+    skizze: `<path ${S} d="M20 98 L120 13 L220 98"/><path ${S} d="M67 58 H173 M79 48 H161"/><path ${D} d="M20 98 H220"/><text ${T} text-anchor="middle" x="120" y="113">lichte Weite</text><text ${T} text-anchor="middle" x="120" y="74">Kehlbalken</text>`,
     felder: [
       { id: 'w', label: 'Lichte Weite auf der Bezugslinie', art: 'len' },
       { id: 'a', label: 'Dachneigung', art: 'ang', vorgabe: 35 },
@@ -392,7 +392,7 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Dach',
     kurz: 'Gaubensparren und Anschluss am Hauptdach',
     info: 'Die Fronthöhe ist lotrecht gemessen, von der Hauptdachfläche bis zur Gaubendachfläche an der Gaubenfront. Alle Längen ohne Dachüberstand und ohne Holzstärken.',
-    skizze: `<path ${S} d="M20 105 L200 15"/><path ${S} d="M70 80 V45 L150 40"/><path ${D} d="M70 80 H150 V40"/><text ${T} x="24" y="64">Fronthöhe</text><text ${T} x="96" y="94">Lauf</text><text ${T} x="92" y="34">Gaube</text><text ${T} x="160" y="64">Hauptdach</text>`,
+    skizze: `<path ${S} d="M20 105 L200 15"/><path ${S} d="M70 80 V45 L150 40"/><path ${D} d="M70 80 H150 V40"/><text ${T} text-anchor="end" x="64" y="66">Fronthöhe</text><text ${T} x="96" y="94">Lauf</text><text ${T} x="92" y="34">Gaube</text><text ${T} x="160" y="64">Hauptdach</text>`,
     felder: [
       { id: 'ah', label: 'Neigung Hauptdach', art: 'ang', vorgabe: 45 },
       { id: 'ag', label: 'Neigung Gaube', art: 'ang', vorgabe: 15 },
@@ -659,7 +659,7 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Ist das Rechteck im Winkel?',
     info: 'Sind beide Diagonalen gleich lang, ist das Rechteck im Winkel. Die gemessenen Diagonalen sind freiwillig.',
-    skizze: `<rect ${S} x="30" y="20" width="180" height="80"/><path ${D} d="M30 100 L210 20 M30 20 L210 100"/><text ${T} x="104" y="114">Länge</text><text ${T} x="214" y="64">Breite</text>`,
+    skizze: `<rect ${S} x="20" y="20" width="170" height="80"/><path ${D} d="M20 100 L190 20 M20 20 L190 100"/><text ${T} text-anchor="middle" x="105" y="114">Länge</text><text ${T} x="196" y="64">Breite</text>`,
     felder: [
       { id: 'l', label: 'Länge', art: 'len' },
       { id: 'b', label: 'Breite', art: 'len' },
@@ -681,13 +681,19 @@ export const RECHNER: Rechner[] = [
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Winkel anlegen mit Maßband',
     info: 'Ein Dreieck mit den Seiten 3 : 4 : 5 hat immer einen rechten Winkel. Je größer die Maße, desto genauer der Winkel.',
-    skizze: `<path ${S} d="M60 100 H200 V20 Z"/><path ${S} d="M188 100 V88 H200"/><text ${T} x="118" y="114">lang (4)</text><text ${T} x="206" y="64">kurz (3)</text><text ${T} x="80" y="56">Diagonale (5)</text>`,
+    // jede Seite ist mit ihrer Beschriftung antippbar und wählt die gegebene Seite
+    skizze:
+      `<path ${D} d="M168 96 V84 H180"/>` +
+      `<g data-feld="seite" data-wert="lang"><path ${S} d="M50 96 H180"/><text ${T} text-anchor="middle" x="115" y="113">lang (4)</text></g>` +
+      `<g data-feld="seite" data-wert="kurz"><path ${S} d="M180 96 V24"/><text ${T} x="187" y="64">kurz (3)</text></g>` +
+      `<g data-feld="seite" data-wert="diagonale"><path ${S} d="M50 96 L180 24"/><text ${T} text-anchor="middle" x="110" y="51" transform="rotate(-29 110 51)">Diagonale (5)</text></g>`,
     felder: [
       {
         id: 'seite',
         label: 'Gegebene Seite',
         art: 'select',
         vorgabe: 'lang',
+        inSkizze: true,
         optionen: [
           { wert: 'kurz', label: 'kurze Seite (3)' },
           { wert: 'lang', label: 'lange Seite (4)' },

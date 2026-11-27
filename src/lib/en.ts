@@ -747,4 +747,5 @@ export const EN: Record<string, string> = {
   'Traufe: Höhe des Senkelschnitts': 'Eaves: height of plumb cut',
   'Die Länge des Waagschnitts an der Traufe muss größer als 0 sein.': 'The length of the level cut at the eaves must be greater than 0.',
   'Der Waagschnitt an der Traufe ist länger, als der Sparren hoch ist – dann bleibt kein Senkelschnitt.': 'The level cut at the eaves is longer than the rafter depth allows – no plumb cut would remain.',
+  'Seite antippen, deren Maß bekannt ist': 'Tap the side whose length is known',
 }
