@@ -18,14 +18,25 @@ const BEISPIELE: Record<string, string[]> = {
   sparreneinteilung: ['1000', '8', '0', '80'],
   diagonale: ['800', '600', '1001', '999'],
   '345': ['240'],
-  rechtwinklig: ['3', '4'],
-  dreieck: ['7', '9', '12'],
   bogen: ['200', '40'],
   treppe: ['280'],
   holz: ['8', '16', '5', '10', '470'],
   massstab: ['2.5', '50'],
   stern: ['5', '200', '36'],
   abstaende: ['4', '0'],
+}
+
+/** Rechner, deren Werte in der Zeichnung eingetragen werden: Beschriftung des Maßes → Wert */
+const IN_ZEICHNUNG: Record<string, Record<string, string>> = {
+  rechtwinklig: { 'a =': '3', 'b =': '4' },
+  dreieck: { 'a =': '7', 'b =': '9', 'c =': '12' },
+}
+
+/** Maß in der Zeichnung antippen, Wert eintragen, bestätigen */
+async function trageEin(page: Page, mass: string, wert: string): Promise<void> {
+  await page.locator('.ergebnis svg.zeichnung').first().locator('text.tippbar', { hasText: mass }).click()
+  await page.locator('.massfeld input').fill(wert)
+  await page.locator('.massfeld button[type=submit]').click()
 }
 
 /** Fehler in der Browserkonsole lassen jeden Test scheitern. */
@@ -51,7 +62,7 @@ for (const sprache of ['de', 'en'] as const) {
     const ids = await page.locator('main li a').evaluateAll((links) => links.map((a) => (a.getAttribute('href') ?? '').replace('#/', '')))
     // jede Funktion der Startseite ist hier abgedeckt oder hat eine eigene Ansicht
     const eigene = ['neigungsmesser', 'behinderung', 'verschnitt', 'bedenken', 'stundenzettel', 'aufmass', 'abnahme', 'bautagebuch']
-    expect(ids.filter((id) => !(id in BEISPIELE) && !eigene.includes(id))).toEqual([])
+    expect(ids.filter((id) => !(id in BEISPIELE) && !(id in IN_ZEICHNUNG) && !eigene.includes(id))).toEqual([])
 
     for (const [id, werte] of Object.entries(BEISPIELE)) {
       await page.goto(`./#/${id}`)
@@ -59,6 +70,17 @@ for (const sprache of ['de', 'en'] as const) {
       for (const [n, wert] of werte.entries()) await felder.nth(n).fill(wert)
       await expect(page.locator('.ergebnis dl'), `Rechner ${id}`).toBeVisible()
       await expect(page.locator('.ergebnis dd').first(), `Rechner ${id}`).not.toHaveText(/NaN|Infinity|undefined/)
+    }
+    for (const [id, werte] of Object.entries(IN_ZEICHNUNG)) {
+      await page.goto(`./#/${id}`)
+      // keine Feldliste und keine zweite Zeichnung: eingetragen wird im Bild
+      await expect(page.locator('form[data-sprung]'), `Rechner ${id}`).toHaveCount(0)
+      await expect(page.locator('svg.skizze'), `Rechner ${id}`).toHaveCount(0)
+      await expect(page.locator('.ergebnis svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
+      for (const [mass, wert] of Object.entries(werte)) await trageEin(page, mass, wert)
+      await expect(page.locator('.ergebnis dl'), `Rechner ${id}`).toBeVisible()
+      await expect(page.locator('.ergebnis dd').first(), `Rechner ${id}`).not.toHaveText(/NaN|Infinity|undefined/)
+      await expect(page.locator('.ergebnis svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
     }
     await page.goto('./#/verschnitt')
     await page.locator('textarea').nth(0).fill('500')
@@ -104,11 +126,15 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   await expect(page.locator('.ergebnis')).toContainText('Kerve: Wange lotrecht')
   await expect(page.locator('.ergebnis h2').first()).toContainText('Detail 1')
   await page.goto('./#/dreieck')
-  for (const [n, wert] of ['3', '4', '5'].entries()) await page.locator('form input').nth(n).fill(wert)
+  for (const [mass, wert] of [['a =', '3'], ['b =', '4'], ['c =', '5']]) await trageEin(page, mass, wert)
   await expect(page.locator('.ergebnis')).toContainText('90,00')
-  // überzählige Angabe wird abgelehnt statt still ignoriert
-  await page.locator('form input').nth(3).fill('30')
+  // überzählige Angabe wird abgelehnt statt still ignoriert; das Bild zum Korrigieren bleibt stehen
+  await trageEin(page, 'α =', '30')
   await expect(page.locator('.ergebnis .fehler')).toContainText('genau drei Werte')
+  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(1)
+  // Wert wieder leeren: es wird erneut gerechnet
+  await trageEin(page, 'α =', '')
+  await expect(page.locator('.ergebnis dl')).toContainText('90,00')
 })
 
 test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {

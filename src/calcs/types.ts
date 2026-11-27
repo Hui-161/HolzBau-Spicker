@@ -22,6 +22,8 @@ export interface Feld {
   setzt?: Record<string, Record<string, number>>
   /** Produktnamen und ähnliche Auswahltexte, die nicht übersetzt werden */
   roheOptionen?: boolean
+  /** Wert wird in der Zeichnung eingetragen (antippen), das Eingabefeld im Formular entfällt */
+  inZeichnung?: boolean
   /** Auswahl wird in der Skizze getroffen (Elemente mit data-feld/data-wert), das Auswahlfeld entfällt */
   inSkizze?: boolean
   /** Feld nur anzeigen, wenn die Bedingung erfüllt ist */
@@ -69,6 +71,8 @@ export interface Mass {
   klein?: boolean
   /** Kennung des Eingabefelds, dessen Wert hier steht: die Zahl ist dann antippbar */
   feld?: string
+  /** antippbar, aber nicht eingegeben: der Wert ist berechnet oder noch offen */
+  berechnet?: boolean
 }
 
 export interface Zeichnung {
@@ -107,6 +111,8 @@ export interface Rechner {
   info?: string
   /** Inline-SVG (viewBox 0 0 240 120), nutzt currentColor */
   skizze?: string
+  /** Zeichnung zum Eintragen der Werte, solange noch kein Ergebnis da ist (ersetzt Skizze und Formular) */
+  vorschau?: (w: Werte) => Zeichnung | undefined
   /** eigene Ansicht statt Felder + Ergebnis (z. B. Sensor) */
   /** 'dokument' = Vorlage aus core/dokumente.ts mit derselben ID */
   eigen?: 'neigungsmesser' | 'dokument'

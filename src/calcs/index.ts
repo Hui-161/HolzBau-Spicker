@@ -44,6 +44,10 @@ const laufListe = (was: string, m: { kante: number; achse: number; ferneKante: n
 
 const detail = (titel: string, z: Zeichnung | undefined): { titel: string; zeichnung: Zeichnung }[] => (z ? [{ titel, zeichnung: z }] : [])
 
+/** Kennungen der Felder, die der Nutzer ausgefüllt hat */
+const gegeben = (w: Werte, ids: string[]): string[] => ids.filter((id) => Number.isFinite(w[id] as number))
+const oderNaN = (w: Werte, id: string): number => opt(w, id) ?? NaN
+
 export const GRUPPEN = ['Dach', 'Einteilung', 'Winkel & Maßkontrolle', 'Sonstiges', 'Dokumente']
 
 export const RECHNER: Rechner[] = [
@@ -811,18 +815,25 @@ export const RECHNER: Rechner[] = [
     titel: 'Rechtwinkliges Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Zwei Werte eingeben, Rest berechnen',
-    info: 'Zwei Felder ausfüllen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.',
-    skizze: `<path ${S} d="M30 100 H200 V25 Z"/><path ${S} d="M188 100 V88 H200"/><text ${T} x="110" y="114">b</text><text ${T} x="206" y="66">a</text><text ${T} x="100" y="54">c</text><text ${T} x="58" y="96">α</text><text ${T} x="184" y="50">β</text>`,
+    info: 'Maße in der Zeichnung antippen und zwei Werte eintragen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.',
+    // Eingabebild: feste Form, die Werte stehen als antippbare Maße daran
+    vorschau: (w) =>
+      zeichneDreieck(6, 10, Math.hypot(6, 10), (Math.atan2(6, 10) * 180) / Math.PI, {
+        feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta' },
+        gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta']),
+        werte: { a: oderNaN(w, 'a'), b: oderNaN(w, 'b'), c: oderNaN(w, 'c'), alpha: oderNaN(w, 'alpha'), beta: oderNaN(w, 'beta'), gamma: 90 },
+      }),
     felder: [
-      { id: 'a', label: 'Seite a', art: 'len', optional: true },
-      { id: 'b', label: 'Seite b', art: 'len', optional: true },
-      { id: 'c', label: 'Seite c (Hypotenuse)', art: 'len', optional: true },
-      { id: 'alpha', label: 'Winkel α', art: 'ang', optional: true },
-      { id: 'beta', label: 'Winkel β', art: 'ang', optional: true },
+      { id: 'a', label: 'Seite a', art: 'len', optional: true, inZeichnung: true },
+      { id: 'b', label: 'Seite b', art: 'len', optional: true, inZeichnung: true },
+      { id: 'c', label: 'Seite c (Hypotenuse)', art: 'len', optional: true, inZeichnung: true },
+      { id: 'alpha', label: 'Winkel α', art: 'ang', optional: true, inZeichnung: true },
+      { id: 'beta', label: 'Winkel β', art: 'ang', optional: true, inZeichnung: true },
     ],
     rechne: (w) => {
       const r = rechtwinklig({ a: opt(w, 'a'), b: opt(w, 'b'), c: opt(w, 'c'), alpha: opt(w, 'alpha'), beta: opt(w, 'beta') })
       return {
+        zeichnung: zeichneDreieck(r.a, r.b, r.c, r.alpha, { feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta' }, gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta']) }),
         ausgaben: [L('a', r.a), L('b', r.b), L('c', r.c, true), W('α', r.alpha, true), W('β', r.beta), { label: 'Fläche', wert: r.flaeche, art: 'area' }, L('Umfang', r.umfang), L('Höhe auf c', r.hoeheC)],
       }
     },
@@ -832,20 +843,25 @@ export const RECHNER: Rechner[] = [
     titel: 'Allgemeines Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Drei Werte eingeben, Rest berechnen',
-    info: 'Drei Felder ausfüllen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
-    skizze: `<path ${S} d="M25 100 H215 L150 22 Z"/><text ${T} x="116" y="114">c</text><text ${T} x="76" y="56">b</text><text ${T} x="190" y="58">a</text><text ${T} x="48" y="96">α</text><text ${T} x="192" y="96">β</text><text ${T} x="146" y="44">γ</text>`,
+    info: 'Maße in der Zeichnung antippen und drei Werte eintragen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
+    vorschau: (w) =>
+      zeichneDreieck(9, 11, 14, (Math.acos((11 * 11 + 14 * 14 - 9 * 9) / (2 * 11 * 14)) * 180) / Math.PI, {
+        feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta', gamma: 'gamma' },
+        gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta', 'gamma']),
+        werte: { a: oderNaN(w, 'a'), b: oderNaN(w, 'b'), c: oderNaN(w, 'c'), alpha: oderNaN(w, 'alpha'), beta: oderNaN(w, 'beta'), gamma: oderNaN(w, 'gamma') },
+      }),
     felder: [
-      { id: 'a', label: 'Seite a', art: 'len', optional: true },
-      { id: 'b', label: 'Seite b', art: 'len', optional: true },
-      { id: 'c', label: 'Seite c', art: 'len', optional: true },
-      { id: 'alpha', label: 'Winkel α', art: 'ang', optional: true },
-      { id: 'beta', label: 'Winkel β', art: 'ang', optional: true },
-      { id: 'gamma', label: 'Winkel γ', art: 'ang', optional: true },
+      { id: 'a', label: 'Seite a', art: 'len', optional: true, inZeichnung: true },
+      { id: 'b', label: 'Seite b', art: 'len', optional: true, inZeichnung: true },
+      { id: 'c', label: 'Seite c', art: 'len', optional: true, inZeichnung: true },
+      { id: 'alpha', label: 'Winkel α', art: 'ang', optional: true, inZeichnung: true },
+      { id: 'beta', label: 'Winkel β', art: 'ang', optional: true, inZeichnung: true },
+      { id: 'gamma', label: 'Winkel γ', art: 'ang', optional: true, inZeichnung: true },
     ],
     rechne: (w) => {
       const r = dreieck({ a: opt(w, 'a'), b: opt(w, 'b'), c: opt(w, 'c'), alpha: opt(w, 'alpha'), beta: opt(w, 'beta'), gamma: opt(w, 'gamma') })
       return {
-        zeichnung: zeichneDreieck(r.a, r.b, r.c, r.alpha),
+        zeichnung: zeichneDreieck(r.a, r.b, r.c, r.alpha, { feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta', gamma: 'gamma' }, gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta', 'gamma']) }),
         ausgaben: [
           L('a', r.a),
           L('b', r.b),

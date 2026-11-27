@@ -285,7 +285,7 @@ export const EN: Record<string, string> = {
   'Das Maß muss größer als 0 sein.': 'The dimension must be greater than 0.',
   'Rechtwinkliges Dreieck': 'Right triangle',
   'Zwei Werte eingeben, Rest berechnen': 'Enter two values, get the rest',
-  'Zwei Felder ausfüllen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.':
+  'Maße in der Zeichnung antippen und zwei Werte eintragen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.':
     'Fill in two fields, at least one of them a side. c is the hypotenuse, α is opposite a.',
   'Seite a': 'Side a',
   'Seite b': 'Side b',
@@ -309,7 +309,7 @@ export const EN: Record<string, string> = {
   Inkreisradius: 'Inradius',
   'Allgemeines Dreieck': 'General triangle',
   'Drei Werte eingeben, Rest berechnen': 'Enter three values, get the rest',
-  'Drei Felder ausfüllen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
+  'Maße in der Zeichnung antippen und drei Werte eintragen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
     'Fill in three fields, at least one of them a side. Each angle is opposite the side of the same name (α opposite a).',
   'Seiten müssen größer als 0 sein.': 'Sides must be greater than 0.',
   'Winkel müssen zwischen 0° und 90° liegen.': 'Angles must be between 0° and 90°.',
@@ -858,4 +858,5 @@ export const EN: Record<string, string> = {
   'Kraft': 'Force',
   'beanspruchter Rand unten, Hirnholzende links': 'loaded edge at the bottom, end grain on the left',
   'Faserrichtung ↔': 'grain direction ↔',
+  'Maße antippen und eintragen – blau ist eingegeben, grau berechnet oder offen': 'Tap dimensions to enter them – blue is entered, grey is calculated or open',
 }

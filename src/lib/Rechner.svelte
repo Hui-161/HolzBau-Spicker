@@ -19,7 +19,7 @@
 
   const werte = $derived<Werte>(Object.fromEntries(rechner.felder.map((f) => [f.id, istText(f) ? (roh[f.id] ?? '') : leseZahl(roh[f.id] ?? '')])))
   const sichtbar = $derived(rechner.felder.filter((f) => !f.wenn || f.wenn(werte)))
-  const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze))
+  const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze && !f.inZeichnung))
   const ungueltig = (f: Feld): boolean => !istText(f) && (roh[f.id] ?? '').trim() !== '' && Number.isNaN(werte[f.id])
 
   type Stand = { ergebnis: Ergebnis } | { fehler: string } | { offen: true }
@@ -143,7 +143,7 @@
     const e = stand.ergebnis
     const l = listen(e)
     return [
-      { k: 'eingabe', n: t('Eingabe') },
+      ...(imFormular.length > 0 ? [{ k: 'eingabe', n: t('Eingabe') }] : []),
       ...(e.zeichnung ? [{ k: 'z0', n: t('Zeichnung') }] : []),
       ...(e.details ?? []).map((d, i) => ({ k: `z${i + 1}`, n: kurz(t(d.titel)) })),
       { k: 'masse', n: t('Maße') },
@@ -181,6 +181,7 @@
         <text
           class="mass tippbar"
           class:klein={m.klein}
+          class:berechnet={m.berechnet}
           class:gewaehlt={offenesMass?.bild === nr && offenesMass.feld === f}
           x={m.x}
           y={m.y}
@@ -214,10 +215,10 @@
       <button type="submit">{t('Fertig')}</button>
     </form>
   {/if}
-  {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
+  {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.berechnet && m.feld && feldVon(m.feld))}{' · '}{t('Maße antippen und eintragen – blau ist eingegeben, grau berechnet oder offen')}{:else if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
 {/snippet}
 
-{#if rechner.skizze}
+{#if rechner.skizze && !rechner.vorschau}
   {#if waehlbar}
     <!-- die Seiten selbst sind fokussierbar (tabindex im Effekt), die Gruppe nicht -->
     <!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -228,6 +229,7 @@
   {/if}
 {/if}
 
+{#if imFormular.length > 0}
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <form data-sprung="eingabe" onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke} onkeydown={weiter}>
   {#each imFormular as f (f.id)}
@@ -251,6 +253,7 @@
     </label>
   {/each}
 </form>
+{/if}
 
 <div class="leiste nicht-drucken">
   <button onclick={leere}>{t('Leeren')}</button>
@@ -262,6 +265,10 @@
 </div>
 
 <section class="ergebnis" aria-live="polite">
+  {#if !('ergebnis' in stand) && rechner.vorschau}
+    {@const v = rechner.vorschau(werte)}
+    {#if v}{@render bild(v, 0)}{/if}
+  {/if}
   {#if 'fehler' in stand}
     <p class="fehler">{t(stand.fehler)}</p>
   {:else if 'offen' in stand}
@@ -345,6 +352,10 @@
     cursor: pointer;
     text-decoration: underline;
     text-decoration-thickness: 0.4px;
+  }
+  .mass.tippbar.berechnet {
+    fill: #444;
+    text-decoration-style: dotted;
   }
   .mass.tippbar:focus-visible,
   .mass.gewaehlt {

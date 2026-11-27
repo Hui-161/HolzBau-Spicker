@@ -53,6 +53,8 @@ interface KettenWahl {
   kurz?: boolean
   /** Kennung des Eingabefelds je Abschnitt: die Maßzahl lässt sich dann in der Zeichnung antippen und ändern */
   feld?: (string | undefined)[]
+  /** je Abschnitt: Wert ist berechnet oder offen, nicht eingegeben */
+  berechnet?: (boolean | undefined)[]
 }
 
 const f1 = (n: number): string => n.toFixed(1)
@@ -195,7 +197,7 @@ function blatt(punkte: Punkt[], rand: Rand) {
         } else {
           zweiteReihe = false
         }
-        masse.push({ x: ort[0], y: ort[1], wert, art: 'len', drehung: Math.abs(drehung) < 0.01 ? undefined : drehung, anker, vor, feld: wahl.feld?.[nr] })
+        masse.push({ x: ort[0], y: ort[1], wert, art: 'len', drehung: Math.abs(drehung) < 0.01 ? undefined : drehung, anker, vor, feld: wahl.feld?.[nr], berechnet: wahl.berechnet?.[nr] })
       }
     },
     /**
@@ -612,36 +614,54 @@ export function zeichneStern(zacken: number, aussen: number, innen: number, kant
 }
 
 /** Dreieck mit c als Grundseite, α links, β rechts. */
-export function zeichneDreieck(a: number, b_: number, c: number, alphaGrad: number): Zeichnung | undefined {
+export interface DreieckWahl {
+  /** Feldkennungen der sechs Größen; damit werden sie in der Zeichnung antippbar */
+  feld?: { a?: string; b?: string; c?: string; alpha?: string; beta?: string; gamma?: string }
+  /** Kennungen der Felder, die der Nutzer ausgefüllt hat */
+  gegeben?: string[]
+  /** angezeigte Werte, wenn sie nicht aus der gezeichneten Form stammen (Eingabebild: leer = NaN) */
+  werte?: { a: number; b: number; c: number; alpha: number; beta: number; gamma: number }
+}
+
+/** Dreieck mit Seiten und Winkeln; α liegt bei A (links unten) gegenüber von a. */
+export function zeichneDreieck(a: number, b_: number, c: number, alphaGrad: number, wahl: DreieckWahl = {}): Zeichnung | undefined {
   if (!gueltig(a, b_, c, alphaGrad)) return undefined
   const rad = (alphaGrad * Math.PI) / 180
   const A: Punkt = [0, 0]
   const B: Punkt = [c, 0]
   const C: Punkt = [b_ * Math.cos(rad), b_ * Math.sin(rad)]
-  const b = blatt([A, B, C], { l: 36, r: 36, o: 32, u: 30 })
+  const b = blatt([A, B, C], { l: 40, r: 40, o: 34, u: 30 })
   b.zug([A, B, C], FLAECHE, true)
+  const f = wahl.feld ?? {}
+  const eingabe = wahl.feld !== undefined
+  const offen = (id: string | undefined): boolean | undefined => (id === undefined ? undefined : !(wahl.gegeben ?? []).includes(id))
+  const w = wahl.werte
   // Maßketten immer auf der Außenseite: bei überhängender Spitze wechselt die Seite
-  b.kette([A, B], { h: b.kante.unten + KETTE_1 }, { werte: [c], vor: ['c = '] })
-  b.kette([A, C], { p: C[0] >= 0 ? 14 : -14 }, { werte: [b_], vor: ['b = '] })
-  b.kette([B, C], { p: C[0] <= c ? 14 : -14 }, { werte: [a], vor: ['a = '] })
-  // Winkel innen an der Ecke, auf der Winkelhalbierenden; entfällt, wenn die Ecke dafür zu eng ist
-  const winkel = (ecke: Punkt, p: Punkt, q: Punkt): void => {
+  b.kette([A, B], { h: b.kante.unten + KETTE_1 }, { werte: [w ? w.c : c], vor: ['c = '], feld: [f.c], berechnet: [offen(f.c)] })
+  b.kette([A, C], { p: C[0] >= 0 ? 14 : -14 }, { werte: [w ? w.b : b_], vor: ['b = '], feld: [f.b], berechnet: [offen(f.b)] })
+  b.kette([B, C], { p: C[0] <= c ? 14 : -14 }, { werte: [w ? w.a : a], vor: ['a = '], feld: [f.a], berechnet: [offen(f.a)] })
+  // Winkel innen an der Ecke, auf der Winkelhalbierenden
+  const winkel = (ecke: Punkt, p: Punkt, q: Punkt, name: string, feld: string | undefined, wert: number | undefined): void => {
     const [e, p1, q1] = [b.px(ecke), b.px(p), b.px(q)]
     const [l1, l2] = [Math.hypot(p1[0] - e[0], p1[1] - e[1]), Math.hypot(q1[0] - e[0], q1[1] - e[1])]
     const u: Punkt = [(p1[0] - e[0]) / l1, (p1[1] - e[1]) / l1]
     const v: Punkt = [(q1[0] - e[0]) / l2, (q1[1] - e[1]) / l2]
     const halb = Math.acos(Math.max(-1, Math.min(1, u[0] * v[0] + u[1] * v[1]))) / 2
-    const bl0 = Math.hypot(u[0] + v[0], u[1] + v[1]) || 1
-    // liegt die Winkelhalbierende waagerecht, steht die Zahl längs im Keil, sonst quer
-    const quer = Math.abs((u[0] + v[0]) / bl0)
-    const abstand = Math.max(18, quer * (16 + 7 / Math.tan(halb)) + (1 - quer) * (7 + 19 / Math.tan(halb)))
-    if (abstand > 0.5 * Math.min(l1, l2)) return
     const bl = Math.hypot(u[0] + v[0], u[1] + v[1]) || 1
-    b.mass({ x: e[0] + ((u[0] + v[0]) / bl) * abstand, y: e[1] + ((u[1] + v[1]) / bl) * abstand, wert: (halb * 360) / Math.PI, art: 'ang', klein: true })
+    // liegt die Winkelhalbierende waagerecht, steht die Zahl längs im Keil, sonst quer
+    const quer = Math.abs((u[0] + v[0]) / bl)
+    const breit = eingabe ? 8 : 0
+    let abstand = Math.max(18, quer * (16 + breit + 7 / Math.tan(halb)) + (1 - quer) * (7 + (19 + breit) / Math.tan(halb)))
+    // ohne Eingabe entfällt der Winkel, wenn die Ecke zu eng ist; zum Eintragen muss er erreichbar bleiben
+    if (abstand > 0.5 * Math.min(l1, l2)) {
+      if (!eingabe) return
+      abstand = 0.5 * Math.min(l1, l2)
+    }
+    b.mass({ x: e[0] + ((u[0] + v[0]) / bl) * abstand, y: e[1] + ((u[1] + v[1]) / bl) * abstand, wert: wert ?? (halb * 360) / Math.PI, art: 'ang', klein: true, vor: eingabe ? `${name} = ` : undefined, feld, berechnet: offen(feld) })
   }
-  winkel(A, B, C)
-  winkel(B, A, C)
-  winkel(C, A, B)
+  winkel(A, B, C, 'α', f.alpha, w?.alpha)
+  winkel(B, A, C, 'β', f.beta, w?.beta)
+  winkel(C, A, B, 'γ', f.gamma, w?.gamma)
   return b.fertig()
 }
 
