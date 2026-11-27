@@ -33,6 +33,25 @@ describe('Vorbemessung nach Faustformel', () => {
     expect(vorbemessung('sparrenPfettendach', 480, undefined, 62.5).breiteVon).toBe(8)
     expect(vorbemessung('kehlbalken', 400, undefined, 80)).toMatchObject({ hoehe: 20, breiteVon: 10 })
   })
+  it('Sparren im Kehlbalkendach: s/24 + 4 cm, Breite e/8 mit Mindestmaß 8 cm', () => {
+    const r = vorbemessung('sparrenKehlbalkendach', 480, undefined, 80)
+    expect(r.hoehe).toBeCloseTo(24, 9)
+    expect(r.breiteVon).toBeCloseTo(10, 9)
+    expect(vorbemessung('sparrenKehlbalkendach', 480, undefined, 60).breiteVon).toBe(8)
+  })
+  it('Pfetten: l/24 + a/30 bzw. a/50, Breite l/40 + a/50 und 0,5 bis 0,7 der Höhe', () => {
+    const p = vorbemessung('pfette45', 480, undefined, undefined, 300)
+    expect(p.hoehe).toBeCloseTo(480 / 24 + 300 / 30, 9)
+    expect(p.breiteFormel).toBeCloseTo(480 / 40 + 300 / 50, 9)
+    expect(p.breiteVon).toBeCloseTo(15, 9)
+    expect(p.breiteBis).toBeCloseTo(21, 9)
+    expect(vorbemessung('pfette15', 480, undefined, undefined, 300).hoehe).toBeCloseTo(480 / 24 + 300 / 50, 9)
+    const s = vorbemessung('pfetteSpitzboden', 480, undefined, undefined, 300, 150)
+    expect(s.hoehe).toBeCloseTo(480 / 24 + 450 / 30, 9)
+    expect(s.breiteFormel).toBeCloseTo(480 / 24 + 450 / 50, 9)
+    expect(() => vorbemessung('pfette45', 480)).toThrow()
+    expect(() => vorbemessung('pfetteSpitzboden', 480, undefined, undefined, 300)).toThrow()
+  })
   it('jede feste Regel hat einen Teiler im üblichen Bereich', () => {
     for (const r of Object.values(FAUSTREGELN)) {
       expect(r.teiler).toBeGreaterThanOrEqual(16)

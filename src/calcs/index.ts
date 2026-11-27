@@ -1087,7 +1087,7 @@ export const RECHNER: Rechner[] = [
     titel: 'Vorbemessung (Faustformel)',
     gruppe: 'Sonstiges',
     kurz: 'Trägerhöhe grob aus der Spannweite – kein Nachweis',
-    info: 'Faustformeln geben nur eine erste Größenordnung für die Querschnittshöhe. Lasten, Holzgüte, Auflager, Durchbiegung, Schwingung und Brandschutz gehen nicht ein. Das Ergebnis ist kein statischer Nachweis und darf nicht als Bemessung verwendet werden; den Querschnitt legt die Tragwerksplanung fest. Die festen Formeln stammen aus einem Hochschulskript zur Vordimensionierung (Tragwerkslehre, Hochschule Ostwestfalen-Lippe): Holzbalkendecke für Wohnräume, Holzbalkenflachdach nach Dachlast, Sparren mit Dachausbau bei 60 bis 90 cm Abstand, Kehlbalken mit Spitzbodenlast. Mit „eigener Teiler“ rechnest du mit deinem eigenen Erfahrungswert.',
+    info: 'Faustformeln geben nur eine erste Größenordnung für die Querschnittshöhe. Lasten, Holzgüte, Auflager, Durchbiegung, Schwingung und Brandschutz gehen nicht ein. Das Ergebnis ist kein statischer Nachweis und darf nicht als Bemessung verwendet werden; den Querschnitt legt die Tragwerksplanung fest. Die festen Formeln stammen aus einem Hochschulskript zur Vordimensionierung (Tragwerkslehre, Hochschule Ostwestfalen-Lippe): Holzbalkendecke für Wohnräume, Holzbalkenflachdach nach Dachlast, Sparren mit Dachausbau bei 60 bis 90 cm Abstand, Kehlbalken mit Spitzbodenlast, Pfetten im Pfettendach (l = Stützweite der Pfette, a = waagerechter Abstand zur benachbarten Auflagerlinie laut Skizze der Quelle). Mit „eigener Teiler“ rechnest du mit deinem eigenen Erfahrungswert.',
     felder: [
       {
         id: 'bt',
@@ -1101,33 +1101,46 @@ export const RECHNER: Rechner[] = [
           { wert: 'flachMittel', label: 'Holzbalken-Flachdach, mittlere Dachlast: l/20' },
           { wert: 'flachSchwer', label: 'Holzbalken-Flachdach, schwere Dachlast: l/16' },
           { wert: 'sparrenSparrendach', label: 'Sparren im Sparrendach: s/24 + 2 cm' },
+          { wert: 'sparrenKehlbalkendach', label: 'Sparren im verschieblichen Kehlbalkendach: größte Stützweite / 24 + 4 cm' },
           { wert: 'sparrenPfettendach', label: 'Sparren im Pfettendach: größte Stützweite / 24' },
           { wert: 'kehlbalken', label: 'Kehlbalken mit Spitzbodenlast: l/20' },
+          { wert: 'pfette45', label: 'Pfette, nur Dachlast, Dachneigung etwa 45°: l/24 + a/30' },
+          { wert: 'pfette15', label: 'Pfette, nur Dachlast, Dachneigung etwa 15°: l/24 + a/50' },
+          { wert: 'pfetteSpitzboden', label: 'Pfette, Dach und ausgebauter Spitzboden: l/24 + (a1 + a2)/30' },
         ],
       },
       { id: 'l', label: 'Spannweite', art: 'len', hinweis: 'Stützweite zwischen den Auflagern; beim Sparren die Sparrenlänge bzw. größte Stützweite' },
       { id: 'n', label: 'Teiler', art: 'num', vorgabe: 24, hinweis: 'Höhe = Spannweite geteilt durch diesen Wert', wenn: (w) => (w.bt ?? 'frei') === 'frei' },
-      { id: 'e', label: 'Achsabstand', art: 'len', optional: true, hinweis: 'für die Breite', wenn: (w) => w.bt === 'sparrenSparrendach' || w.bt === 'sparrenPfettendach' || w.bt === 'kehlbalken' },
+      { id: 'e', label: 'Achsabstand', art: 'len', optional: true, hinweis: 'für die Breite', wenn: (w) => w.bt === 'sparrenSparrendach' || w.bt === 'sparrenKehlbalkendach' || w.bt === 'sparrenPfettendach' || w.bt === 'kehlbalken' },
+      { id: 'pa', label: 'Maß a', art: 'len', hinweis: 'waagerechter Abstand der Pfette zur benachbarten Auflagerlinie (bei Spitzboden: a1 zur Traufseite), laut Skizze der Quelle', wenn: (w) => typeof w.bt === 'string' && w.bt.startsWith('pfette') },
+      { id: 'pa2', label: 'Maß a2', art: 'len', hinweis: 'waagerechter Abstand zur nächsten Pfette auf der Firstseite', wenn: (w) => w.bt === 'pfetteSpitzboden' },
     ],
     rechne: (w, k) => {
       const bt = (typeof w.bt === 'string' && w.bt in FAUSTREGELN ? w.bt : 'frei') as Faustbauteil
       const e = opt(w, 'e')
       // der Rechenkern arbeitet in cm (Zuschläge und Mindestmaße der Formeln sind in cm angegeben)
-      const r = vorbemessung(bt, zahl(w, 'l') / k.jeCm, bt === 'frei' ? zahl(w, 'n') : undefined, e === undefined ? undefined : e / k.jeCm)
+      const istPfette = bt.startsWith('pfette')
+      const r = vorbemessung(bt, zahl(w, 'l') / k.jeCm, bt === 'frei' ? zahl(w, 'n') : undefined, e === undefined ? undefined : e / k.jeCm, istPfette ? zahl(w, 'pa') / k.jeCm : undefined, bt === 'pfetteSpitzboden' ? zahl(w, 'pa2') / k.jeCm : undefined)
       const cm = (label: string, wert: number, wichtig = false): Ausgabe => L(label, wert * k.jeCm, wichtig)
-      const mitB = r.breiteVon !== undefined && r.breiteBis !== undefined
+      // Pfetten: gezeichnet wird die Breite aus der Formel; der Bereich als Anteil der Höhe steht in den Maßen
+      const [bVon, bBis] = r.breiteFormel !== undefined ? [r.breiteFormel, r.breiteFormel] : [r.breiteVon, r.breiteBis]
+      const mitB = bVon !== undefined && bBis !== undefined
       return {
         zeichnung: zeichneTraeger(zahl(w, 'l'), r.hoehe * k.jeCm),
-        details: detail(mitB ? 'Detail Querschnitt mit Richtwerten' : 'Detail Querschnitt – Breite nur angedeutet', zeichneQuerschnitt(r.hoehe * k.jeCm, mitB ? (r.breiteVon as number) * k.jeCm : undefined, mitB ? (r.breiteBis as number) * k.jeCm : undefined)),
+        details: detail(mitB ? 'Detail Querschnitt mit Richtwerten' : 'Detail Querschnitt – Breite nur angedeutet', zeichneQuerschnitt(r.hoehe * k.jeCm, mitB ? (bVon as number) * k.jeCm : undefined, mitB ? (bBis as number) * k.jeCm : undefined)),
         ausgaben: [
           cm('Querschnittshöhe, Richtwert', r.hoehe, true),
-          ...(r.breiteVon !== undefined && r.breiteBis !== undefined
+          ...(r.breiteFormel !== undefined ? [cm('Querschnittsbreite, Richtwert', r.breiteFormel)] : []),
+          ...(r.breiteFormel !== undefined && r.breiteVon !== undefined && r.breiteBis !== undefined
+            ? [cm('Querschnittsbreite als Anteil der Höhe, von', r.breiteVon), cm('Querschnittsbreite als Anteil der Höhe, bis', r.breiteBis)]
+            : r.breiteVon !== undefined && r.breiteBis !== undefined
             ? Math.abs(r.breiteBis - r.breiteVon) < 1e-9
               ? [cm(bt.startsWith('flach') ? 'Querschnittsbreite, Richtwert mindestens' : 'Querschnittsbreite, Richtwert', r.breiteVon)]
               : [cm('Querschnittsbreite, Richtwert von', r.breiteVon), cm('Querschnittsbreite, Richtwert bis', r.breiteBis)]
             : []),
           { label: 'gerechnet mit Spannweite geteilt durch', wert: r.teiler, art: 'num', stellen: 1 },
           ...(r.zuschlag > 0 ? [cm('Zuschlag der Formel', r.zuschlag)] : []),
+          ...(r.anteilA > 0 ? [cm('Anteil aus dem Maß a', r.anteilA)] : []),
         ],
         hinweise: ['Vorbemessung nach Faustformel – kein statischer Nachweis. Querschnitt, Holzgüte und Anschlüsse legt die Tragwerksplanung fest.'],
       }
