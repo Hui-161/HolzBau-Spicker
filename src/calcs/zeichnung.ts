@@ -1,17 +1,28 @@
 import type { Mass, Zeichnung } from './types'
 
 /**
- * Maßstäbliche Zeichnungen als SVG. Der Inhalt entsteht nur aus Zahlen – es fließt kein frei
- * eingegebener Text in das Markup. Maßzahlen werden als Daten (Position + Wert) geliefert und
- * erst in der Anzeige formatiert, damit sie Einheit und Sprache folgen.
+ * Maßstäbliche Zeichnungen als SVG mit Maßketten wie in einer Bauzeichnung: Maßlinie,
+ * Maßhilfslinien, Begrenzungsstriche unter 45°, Maßzahl über der Linie.
+ *
+ * Der Inhalt entsteht nur aus Zahlen – es fließt kein frei eingegebener Text in das Markup.
+ * Maßzahlen werden als Daten (Position + Wert) geliefert und erst in der Anzeige formatiert,
+ * damit sie Einheit und Sprache folgen.
  */
 
-const BREITE = 240
-const MAX_HOEHE = 200
+const BREITE = 280
+const MAX_HOEHE = 250
 
 const LINIE = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"'
+const DICK = 'fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"'
 const HILF = 'fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"'
 const FLAECHE = 'fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"'
+// Maßlinien neutral, damit sie sich vom Bauteil abheben; der zweite Wert gilt im PDF
+const MASS = 'fill="none" style="stroke:var(--leise,#555)" stroke-width="0.8"'
+const STRICH = 'fill="none" style="stroke:var(--text,#000)" stroke-width="1.4" stroke-linecap="round"'
+
+/** Abstand der ersten Maßkette vom Bauteil und der Ketten untereinander (in Zeichnungseinheiten) */
+const KETTE_1 = 17
+const KETTE_2 = 34
 
 type Punkt = [number, number]
 interface Rand {
@@ -21,8 +32,24 @@ interface Rand {
   u: number
 }
 
-/** Bildet Bauteil-Koordinaten (y nach oben) maßstäblich in die Zeichenfläche ab. */
-function flaeche(punkte: Punkt[], rand: Rand) {
+/** Lage einer Maßkette: waagerecht auf Höhe h, senkrecht bei v oder parallel zur Strecke im Abstand p */
+type Lage = { h: number } | { v: number } | { p: number }
+
+interface KettenWahl {
+  /** Maßzahlen je Abschnitt; ohne Angabe die Länge aus der Zeichnung */
+  werte?: number[]
+  /** Vorsatz je Abschnitt, z. B. „a = “ */
+  vor?: (string | undefined)[]
+}
+
+const f1 = (n: number): string => n.toFixed(1)
+const gueltig = (...z: number[]): boolean => z.every((x) => Number.isFinite(x))
+
+/**
+ * Zeichenblatt: bildet Bauteil-Koordinaten (y nach oben) maßstäblich ab und sammelt
+ * Linien und Maßzahlen. Die Ränder müssen Platz für die Maßketten lassen.
+ */
+function blatt(punkte: Punkt[], rand: Rand) {
   const xs = punkte.map((p) => p[0])
   const ys = punkte.map((p) => p[1])
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
@@ -32,43 +59,115 @@ function flaeche(punkte: Punkt[], rand: Rand) {
   const s = Math.min(platz / dx, (MAX_HOEHE - rand.o - rand.u) / dy)
   const links = rand.l + (platz - dx * s) / 2
   const px = ([x, y]: Punkt): Punkt => [links + (x - x0) * s, rand.o + (y1 - y) * s]
-  const f1 = (n: number): string => n.toFixed(1)
-  return {
-    hoehe: dy * s + rand.o + rand.u,
+  const blattHoehe = Math.max(dy * s + rand.o + rand.u, 40)
+  const teile: string[] = []
+  const masse: Mass[] = []
+
+  const pfad = (ps: Punkt[], stil: string, zu = false): string => `<path ${stil} d="M${ps.map(([x, y]) => `${f1(x)},${f1(y)}`).join(' L')}${zu ? ' Z' : ''}"/>`
+
+  const b = {
     px,
-    zug: (ps: Punkt[], stil: string, zu = false): string =>
-      `<path ${stil} d="M${ps
-        .map(px)
-        .map(([x, y]) => `${f1(x)},${f1(y)}`)
-        .join(' L')}${zu ? ' Z' : ''}"/>`,
+    /** Grenzen des Bauteils in Zeichnungseinheiten – daran richten sich die Maßketten aus */
+    kante: { links, rechts: links + dx * s, oben: rand.o, unten: rand.o + dy * s },
+    /** Linienzug in Bauteil-Koordinaten */
+    zug: (ps: Punkt[], stil: string, zu = false): void => void teile.push(pfad(ps.map(px), stil, zu)),
+    roh: (svg: string): void => void teile.push(svg),
+    mass: (m: Mass): void => void masse.push(m),
+    /** Maßzahl an einem Punkt, um (dx, dy) versetzt */
+    anPunkt: (p: Punkt, wert: number, dxPx: number, dyPx: number, mehr: Partial<Mass> = {}): void => {
+      const [x, y] = px(p)
+      masse.push({ x: x + dxPx, y: y + dyPx, wert, art: 'len', ...mehr })
+    },
+    /** Maßzahl mitten auf einer Strecke, deckend hinterlegt (für Maße ohne Platz für eine Kette) */
+    aufStrecke: (p: Punkt, q: Punkt, wert: number, mehr: Partial<Mass> = {}): void => {
+      let [a, e] = [px(p), px(q)]
+      if (a[0] > e[0] + 1e-6 || (Math.abs(a[0] - e[0]) <= 1e-6 && a[1] < e[1])) [a, e] = [e, a]
+      masse.push({ x: (a[0] + e[0]) / 2, y: (a[1] + e[1]) / 2, drehung: (Math.atan2(e[1] - a[1], e[0] - a[0]) * 180) / Math.PI, wert, art: 'len', hinterlegt: true, ...mehr })
+    },
     /**
-     * Maßzahl an der Strecke p–q, parallel dazu. abstand > 0: oberhalb bzw. links der Strecke,
-     * abstand < 0: unterhalb bzw. rechts (in Pixeln).
+     * Maßkette durch die angegebenen Punkte. Die Punkte werden rechtwinklig auf die Maßlinie
+     * gelotet; zwischen je zwei benachbarten Loten steht eine Maßzahl.
      */
-    anStrecke: (p: Punkt, q: Punkt, wert: number, abstand: number, mehr: Partial<Mass> = {}): Mass => {
-      let [a, b] = [px(p), px(q)]
-      // so drehen, dass die Schrift von links bzw. von unten lesbar ist
-      if (a[0] > b[0] + 1e-6 || (Math.abs(a[0] - b[0]) <= 1e-6 && a[1] < b[1])) [a, b] = [b, a]
-      const [ex, ey] = [b[0] - a[0], b[1] - a[1]]
-      const len = Math.hypot(ex, ey) || 1
-      return {
-        x: (a[0] + b[0]) / 2 + (ey / len) * abstand,
-        y: (a[1] + b[1]) / 2 - (ex / len) * abstand,
-        drehung: (Math.atan2(ey, ex) * 180) / Math.PI,
-        wert,
-        art: 'len',
-        ...mehr,
+    kette: (ps: Punkt[], lage: Lage, wahl: KettenWahl = {}): void => {
+      const pts = ps.map(px)
+      // u = Leserichtung der Maßlinie, oben = Seite, auf der die Maßzahl steht (jeweils in Zeichnungseinheiten, y nach unten)
+      let u: Punkt
+      let q: Punkt
+      if ('h' in lage) {
+        u = [1, 0]
+        q = [0, lage.h]
+      } else if ('v' in lage) {
+        u = [0, -1]
+        q = [lage.v, 0]
+      } else {
+        const [a, e] = [pts[0], pts[pts.length - 1]]
+        const len = Math.hypot(e[0] - a[0], e[1] - a[1]) || 1
+        u = [(e[0] - a[0]) / len, (e[1] - a[1]) / len]
+        // von links nach rechts bzw. von unten nach oben lesbar
+        if (u[0] < -1e-6 || (Math.abs(u[0]) <= 1e-6 && u[1] > 0)) u = [-u[0], -u[1]]
+        q = [a[0] + u[1] * lage.p, a[1] - u[0] * lage.p]
+      }
+      const oben: Punkt = [u[1], -u[0]]
+      // Lote auf die Maßlinie, in Leserichtung sortiert; die Maßzahlen folgen der Reihenfolge der Punkte
+      const lote = pts.map((p, i) => {
+        const t = (p[0] - q[0]) * u[0] + (p[1] - q[1]) * u[1]
+        return { p, t, fuss: [q[0] + u[0] * t, q[1] + u[1] * t] as Punkt, i }
+      })
+      const umgekehrt = lote.length > 1 && lote[0].t > lote[lote.length - 1].t
+      lote.sort((a, c) => a.t - c.t)
+      const [erster, letzter] = [lote[0], lote[lote.length - 1]]
+      // Maßlinie mit kurzem Überstand
+      teile.push(pfad([[erster.fuss[0] - u[0] * 3, erster.fuss[1] - u[1] * 3], [letzter.fuss[0] + u[0] * 3, letzter.fuss[1] + u[1] * 3]], MASS))
+      for (const l of lote) {
+        // Maßhilfslinie vom Bauteil zur Maßlinie, mit kleinem Abstand am Bauteil und Überstand an der Linie
+        const [hx, hy] = [l.fuss[0] - l.p[0], l.fuss[1] - l.p[1]]
+        const weit = Math.hypot(hx, hy)
+        if (weit > 4) {
+          const [ex, ey] = [hx / weit, hy / weit]
+          teile.push(pfad([[l.p[0] + ex * 2.5, l.p[1] + ey * 2.5], [l.fuss[0] + ex * 3, l.fuss[1] + ey * 3]], MASS))
+        }
+        // Begrenzungsstrich unter 45°
+        const [sx, sy] = [(u[0] + oben[0]) * 2.6, (u[1] + oben[1]) * 2.6]
+        teile.push(pfad([[l.fuss[0] - sx, l.fuss[1] - sy], [l.fuss[0] + sx, l.fuss[1] + sy]], STRICH))
+      }
+      const drehung = (Math.atan2(u[1], u[0]) * 180) / Math.PI
+      const n = lote.length - 1
+      for (let i = 0; i < n; i++) {
+        const lang = lote[i + 1].t - lote[i].t
+        if (lang < 0.5) continue
+        const nr = umgekehrt ? n - 1 - i : i
+        const wert = wahl.werte?.[nr] ?? lang / s
+        const vor = wahl.vor?.[nr]
+        // geschätzte Breite der Maßzahl: passt sie nicht zwischen die Striche, rückt sie nach außen oder unter die Linie
+        const breit = (String(Math.round(Math.abs(wert))).length + 2 + (vor?.length ?? 0)) * 5.3
+        const mitte: Punkt = [(lote[i].fuss[0] + lote[i + 1].fuss[0]) / 2, (lote[i].fuss[1] + lote[i + 1].fuss[1]) / 2]
+        let ort: Punkt = [mitte[0] + oben[0] * 6, mitte[1] + oben[1] * 6]
+        let anker: Mass['anker'] = 'middle'
+        if (lang < breit && n > 1) {
+          // außen neben die Kette, sofern die Zahl dort noch auf das Blatt passt; sonst unter die Linie
+          const passt = (start: Punkt, richtung: 1 | -1): boolean => {
+            const ende: Punkt = [start[0] + u[0] * breit * richtung, start[1] + u[1] * breit * richtung]
+            return [start, ende].every(([x, y]) => x >= 2 && x <= BREITE - 2 && y >= 2 && y <= blattHoehe - 2)
+          }
+          const links: Punkt = [erster.fuss[0] - u[0] * 5 + oben[0] * 6, erster.fuss[1] - u[1] * 5 + oben[1] * 6]
+          const rechts: Punkt = [letzter.fuss[0] + u[0] * 5 + oben[0] * 6, letzter.fuss[1] + u[1] * 5 + oben[1] * 6]
+          if (i === 0 && passt(links, -1)) {
+            ort = links
+            anker = 'end'
+          } else if (i === n - 1 && passt(rechts, 1)) {
+            ort = rechts
+            anker = 'start'
+          } else {
+            ort = [mitte[0] - oben[0] * 7, mitte[1] - oben[1] * 7]
+          }
+        }
+        masse.push({ x: ort[0], y: ort[1], wert, art: 'len', drehung: Math.abs(drehung) < 0.01 ? undefined : drehung, anker, vor })
       }
     },
-    /** Maßzahl an einem Punkt, um (dx, dy) Pixel versetzt. */
-    anPunkt: (p: Punkt, wert: number, dxPx: number, dyPx: number, mehr: Partial<Mass> = {}): Mass => {
-      const [x, y] = px(p)
-      return { x: x + dxPx, y: y + dyPx, wert, art: 'len', ...mehr }
-    },
+    fertig: (): Zeichnung => ({ breite: BREITE, hoehe: blattHoehe, inhalt: teile.join(''), masse }),
   }
+  return b
 }
-
-const gueltig = (...z: number[]): boolean => z.every((x) => Number.isFinite(x))
 
 /** Nullpunkt ist die Kervenecke an der Außenkante der Fußpfette; ohne Kerve liegt er auf der Sparrenunterkante. */
 export function zeichneSparren(grundmass: number, ueberstand: number, neigungGrad: number, sparrenhoehe: number, kerve = 0): Zeichnung | undefined {
@@ -90,6 +189,7 @@ export function zeichneSparren(grundmass: number, ueberstand: number, neigungGra
   ]
   const obenLinks = sparren[sparren.length - 1]
   const obenRechts = sparren[sparren.length - 2]
+  const kerveOben: Punkt = [0, unten(0) + lot]
   // Fußpfette nur angedeutet, ihre Maße sind nicht bekannt
   const pf = Math.max(kSattel, sparrenhoehe * 0.6)
   const pfette: Punkt[] = [
@@ -98,48 +198,40 @@ export function zeichneSparren(grundmass: number, ueberstand: number, neigungGra
     [pf, -pf],
     [0, -pf],
   ]
-  const hilf: Punkt[] = [
-    [0, 0],
-    [grundmass, 0],
-    [grundmass, grundmass * t],
-  ]
-  const f = flaeche([...sparren, ...hilf, ...pfette], { l: 30, r: 50, o: 22, u: 24 })
-  // Dachüberstand: waagerecht unter dem Sparrenfuß, bis zur Außenkante Fußpfette
-  const fuss = Math.min(unten(-ueberstand), -pf)
-  const mitUeberstand = ueberstand > 0
-  // Nummern der Risse wie in der Anrissliste: Traufe, Kervensenkel, Ende des Waagrisses, First
-  const kerveOben: Punkt = [0, unten(0) + lot]
-  const rissNummern: Mass[] = []
-  let nr = 0
-  const nummer = (p: Punkt, dy: number): void => void rissNummern.push(f.anPunkt(p, ++nr, 0, dy, { art: 'int', klein: true, hinterlegt: true }))
-  nummer(obenLinks, -8)
-  if (ueberstand > 0 || kerve > 0) nummer(kerveOben, -8)
-  if (kerve > 0) nummer([kSattel, 0], 9)
-  nummer(obenRechts, -8)
-  const kerveSenkel = ueberstand > 0 || kerve > 0 ? f.zug([[0, 0], kerveOben], HILF) : ''
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: kerveSenkel + f.zug(hilf, HILF) + f.zug(pfette, HILF, true) + (mitUeberstand ? f.zug([[-ueberstand, unten(-ueberstand)], [-ueberstand, fuss], [0, fuss]], HILF) : '') + f.zug(sparren, FLAECHE, true),
-    masse: [
-      ...(mitUeberstand ? [f.anPunkt([0, fuss], ueberstand, -3, 10, { anker: 'end' as const })] : []),
-      f.anStrecke([0, 0], [grundmass, 0], grundmass, -10),
-      f.anStrecke(obenLinks, obenRechts, (grundmass + ueberstand) / Math.cos(rad), 9),
-      ...rissNummern,
-      f.anPunkt([grundmass, (grundmass * t) / 2], grundmass * t, 5, 0, { anker: 'start' }),
-      // steiles Dach: Winkel im Zwickel am Fuß; flaches Dach: darunter, sonst läge er auf dem Sparren
-      // Neigung im Dreieck, dort wo zwischen Grundlinie und Sparren Platz ist
-      f.anPunkt([grundmass * 0.62, 0], neigungGrad, 0, -8, { art: 'ang' }),
-    ],
+  const mitFuss = ueberstand > 0 || kerve > 0
+  const b = blatt([...sparren, ...pfette, [grundmass, 0]], { l: 32, r: 30, o: 44, u: 38 })
+  b.zug([[0, 0], [grundmass, 0], [grundmass, unten(grundmass)]], HILF)
+  if (mitFuss) b.zug([[0, 0], kerveOben], HILF)
+  b.zug(pfette, HILF, true)
+  b.zug(sparren, FLAECHE, true)
+  // unten: Überstand und Grundmaß; rechts: Firsthöhe; am Sparren: Teillängen und Gesamtlänge
+  b.kette([[-ueberstand, 0], [0, 0], [grundmass, 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[grundmass, 0], [grundmass, grundmass * t]], { v: b.kante.rechts + KETTE_1 })
+  if (mitFuss && ueberstand > 0) {
+    b.kette([obenLinks, kerveOben, obenRechts], { p: KETTE_1 })
+    b.kette([obenLinks, obenRechts], { p: KETTE_2 })
+  } else {
+    b.kette([obenLinks, obenRechts], { p: KETTE_1 })
   }
+  // Neigung im Dreieck, dort wo zwischen Grundlinie und Sparren Platz ist
+  b.anPunkt([grundmass * 0.6, 0], neigungGrad, 0, -8, { art: 'ang' })
+  // Nummern der Risse wie in der Anrissliste: Traufe, Kervensenkel, Ende des Waagrisses, First
+  let nr = 0
+  const nummer = (p: Punkt, dxPx: number, dyPx: number): void => b.anPunkt(p, ++nr, dxPx, dyPx, { art: 'int', klein: true, hinterlegt: true })
+  nummer(sparren[0], -8, -7)
+  if (mitFuss) nummer([0, unten(0)], -6, 7)
+  if (kerve > 0) nummer([kSattel, 0], 8, 8)
+  nummer([grundmass, unten(grundmass)], -9, 9)
+  return b.fertig()
 }
 
 export function zeichneKehlbalken(weite: number, neigungGrad: number, hoeheUnten: number, balkenhoehe: number): Zeichnung | undefined {
   const t = Math.tan((neigungGrad * Math.PI) / 180)
   if (!gueltig(weite, t, hoeheUnten, balkenhoehe)) return undefined
+  const first = (weite / 2) * t
   const dach: Punkt[] = [
     [0, 0],
-    [weite / 2, (weite / 2) * t],
+    [weite / 2, first],
     [weite, 0],
   ]
   const oben = hoeheUnten + balkenhoehe
@@ -150,36 +242,29 @@ export function zeichneKehlbalken(weite: number, neigungGrad: number, hoeheUnten
     [weite - xo, oben],
     [xo, oben],
   ]
-  // Höhenmaß links der Mitte, damit es die Längenmaße nicht trifft
-  const xh = weite / 2 - (weite - 2 * xu) * 0.32
-  const basis: Punkt[] = [
-    [0, 0],
-    [weite, 0],
-  ]
-  const f = flaeche(dach, { l: 14, r: 14, o: 14, u: 24 })
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: f.zug(basis, HILF) + f.zug([[xh, 0], [xh, hoeheUnten]], HILF) + f.zug(dach, LINIE) + f.zug(balken, FLAECHE, true),
-    masse: [
-      f.anStrecke(basis[0], basis[1], weite, -10),
-      f.anStrecke(balken[0], balken[1], weite - 2 * xu, -9),
-      f.anStrecke(balken[3], balken[2], weite - 2 * xo, 9),
-      ...(hoeheUnten > 0 ? [f.anPunkt([xh, hoeheUnten / 2], hoeheUnten, 4, 0, { anker: 'start' as const })] : []),
-    ],
-  }
+  const b = blatt(dach, { l: 34, r: 14, o: 14, u: 30 })
+  b.zug([[0, 0], [weite, 0]], HILF)
+  b.zug(dach, LINIE)
+  b.zug(balken, FLAECHE, true)
+  b.kette([[0, 0], [weite, 0]], { h: b.kante.unten + KETTE_1 })
+  // links die Höhen: Bezugslinie – Unterkante – Oberkante – Spitze
+  b.kette([[0, 0], balken[0], balken[3], dach[1]], { v: b.kante.links - KETTE_1 })
+  // Längen des Kehlbalkens direkt an seinen Kanten
+  b.aufStrecke(balken[0], balken[1], weite - 2 * xu, { hinterlegt: true })
+  const [, yOben] = b.px(balken[3])
+  if (yOben - b.px(dach[1])[1] > 22) b.kette([balken[3], balken[2]], { h: yOben - 11 })
+  else b.anPunkt(dach[1], weite - 2 * xo, 0, -7)
+  return b.fertig()
 }
 
 /** Nummern an den Schiftern; bei dichter Folge nur jede k-te, damit sie lesbar bleiben. */
-function nummern(abstaende: number[], ort: (d: number) => Punkt, dx: number, dy: number): Mass[] {
+function nummern(b: ReturnType<typeof blatt>, abstaende: number[], ort: (d: number) => Punkt, dx: number, dy: number): void {
   const sichtbar = abstaende.slice(0, 60)
-  if (sichtbar.length === 0) return []
-  const [a, b] = [ort(sichtbar[0]), ort(sichtbar[1] ?? sichtbar[0] * 2)]
-  const schritt = Math.max(1, Math.ceil(11 / (Math.hypot(b[0] - a[0], b[1] - a[1]) || 11)))
-  return sichtbar.flatMap((d, i) => {
-    if ((i + 1) % schritt !== 0) return []
-    const [x, y] = ort(d)
-    return [{ x: x + dx, y: y + dy, wert: i + 1, art: 'int' as const, klein: true }]
+  if (sichtbar.length === 0) return
+  const [a, e] = [b.px(ort(sichtbar[0])), b.px(ort(sichtbar[1] ?? sichtbar[0] * 2))]
+  const schritt = Math.max(1, Math.ceil(11 / (Math.hypot(e[0] - a[0], e[1] - a[1]) || 11)))
+  sichtbar.forEach((d, i) => {
+    if ((i + 1) % schritt === 0) b.anPunkt(ort(d), i + 1, dx, dy, { art: 'int', klein: true })
   })
 }
 
@@ -189,52 +274,42 @@ export function zeichneGrat(grundHaupt: number, grundWalm: number, schifterHaupt
   const x = grundHaupt
   const w = grundWalm
   const first = w * 0.45
-  const f = flaeche(
+  const b = blatt(
     [
       [0, 0],
       [w + first, x],
     ],
-    { l: 40, r: 14, o: 14, u: 38 }
+    { l: 44, r: 14, o: 14, u: 40 }
   )
-  const traufe: Punkt[] = [
-    [w + first, 0],
-    [0, 0],
-    [0, x],
-  ]
-  let inhalt = f.zug(traufe, LINIE)
-  for (const d of schifterHaupt.slice(0, 60)) inhalt += f.zug([[d, 0], [d, (d * x) / w]], HILF)
-  for (const d of schifterWalm.slice(0, 60)) inhalt += f.zug([[0, d], [(d * w) / x, d]], HILF)
-  inhalt += f.zug([[w, 0], [w, x]], HILF)
-  inhalt += f.zug([[w, x], [w + first, x]], LINIE)
-  inhalt += f.zug([[0, 0], [w, x]], 'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"')
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt,
-    masse: [
-      // Schifter tragen die Nummer aus der Liste, außen an der Traufe
-      ...nummern(schifterHaupt, (d) => f.px([d, 0]), 0, 9),
-      ...nummern(schifterWalm, (d) => f.px([0, d]), -9, 0),
-      f.anStrecke([0, 0], [w, 0], w, -24),
-      f.anStrecke([0, 0], [0, x], x, 24),
-      // Grundriss: am Grat steht das Gratgrundmaß, nicht die wahre Länge
-      f.anStrecke([0, 0], [w, x], Math.hypot(w, x), 0, { hinterlegt: true }),
-    ],
-  }
+  b.zug([[w + first, 0], [0, 0], [0, x]], LINIE)
+  for (const d of schifterHaupt.slice(0, 60)) b.zug([[d, 0], [d, (d * x) / w]], HILF)
+  for (const d of schifterWalm.slice(0, 60)) b.zug([[0, d], [(d * w) / x, d]], HILF)
+  b.zug([[w, 0], [w, x]], HILF)
+  b.zug([[w, x], [w + first, x]], LINIE)
+  b.zug([[0, 0], [w, x]], DICK)
+  // Schifter tragen die Nummer aus der Liste, außen an der Traufe; die Maßketten liegen weiter außen
+  nummern(b, schifterHaupt, (d) => [d, 0], 0, 8)
+  nummern(b, schifterWalm, (d) => [0, d], -8, 0)
+  const mitNummern = schifterHaupt.length > 0
+  b.kette([[0, 0], [w, 0]], { h: b.kante.unten + (mitNummern ? KETTE_1 + 9 : KETTE_1) })
+  b.kette([[0, 0], [0, x]], { v: b.kante.links - (mitNummern ? KETTE_1 + 9 : KETTE_1) })
+  // Grundriss: am Grat steht das Gratgrundmaß, nicht die wahre Länge
+  b.aufStrecke([0, 0], [w, x], Math.hypot(w, x))
+  return b.fertig()
 }
 
 /** Stäbe auf einer Strecke, von oben gesehen. */
 export function zeichneEinteilung(breite: number, staerke: number, kanten: number[]): Zeichnung | undefined {
   if (!gueltig(breite, staerke) || kanten.length > 80) return undefined
   const tiefe = breite * 0.16
-  const f = flaeche(
+  const b = blatt(
     [
       [0, 0],
       [breite, tiefe],
     ],
-    { l: 14, r: 14, o: 24, u: 36 }
+    { l: 34, r: 16, o: 46, u: 30 }
   )
-  let inhalt = f.zug(
+  b.zug(
     [
       [0, 0],
       [breite, 0],
@@ -245,7 +320,7 @@ export function zeichneEinteilung(breite: number, staerke: number, kanten: numbe
     true
   )
   for (const k of kanten) {
-    inhalt += f.zug(
+    b.zug(
       [
         [k, 0],
         [k + staerke, 0],
@@ -256,18 +331,14 @@ export function zeichneEinteilung(breite: number, staerke: number, kanten: numbe
       true
     )
   }
-  const masse: Mass[] = [f.anStrecke([0, 0], [breite, 0], breite, -24)]
+  b.kette([[0, 0], [breite, 0]], { h: b.kante.unten + KETTE_1 })
   if (kanten.length >= 2) {
-    const [a, b] = kanten
-    // am ersten Feld: oben das Achsmaß, unten das lichte Maß
-    const links = f.px([a, 0])[0] < 60 ? ('start' as const) : ('middle' as const)
-    const mitte: Punkt = links === 'start' ? [a, 0] : [(a + b) / 2, 0]
-    masse.push(
-      { ...f.anPunkt([mitte[0], tiefe], b - a, 0, -10), anker: links, name: 'Achsmaß' },
-      { ...f.anPunkt(mitte, b - a - staerke, 0, 10), anker: links, name: 'Lichtes Maß' }
-    )
+    const [a, e] = kanten
+    // am ersten Feld: Stab und lichtes Maß, darüber das Achsmaß
+    b.kette([[a, tiefe], [a + staerke, tiefe], [e, tiefe]], { h: b.kante.oben - KETTE_1 })
+    b.kette([[a, tiefe], [e, tiefe]], { h: b.kante.oben - KETTE_2 })
   }
-  return { breite: BREITE, hoehe: f.hoehe, inhalt, masse }
+  return b.fertig()
 }
 
 export function zeichneStern(zacken: number, aussen: number, innen: number, kante: number): Zeichnung | undefined {
@@ -278,58 +349,51 @@ export function zeichneStern(zacken: number, aussen: number, innen: number, kant
     const w = Math.PI / 2 + (i * Math.PI) / zacken
     punkte.push([r * Math.cos(w), r * Math.sin(w)])
   }
-  const f = flaeche(
+  const b = blatt(
     [
       [-aussen, -aussen],
       [aussen, aussen],
     ],
-    { l: 16, r: 16, o: 14, u: 26 }
+    { l: 30, r: 30, o: 22, u: 30 }
   )
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt:
-      `<circle cx="${f.px([0, 0])[0].toFixed(1)}" cy="${f.px([0, 0])[1].toFixed(1)}" r="${(f.px([aussen, 0])[0] - f.px([0, 0])[0]).toFixed(1)}" ${HILF}/>` + f.zug(punkte, FLAECHE, true),
-    masse: [f.anStrecke(punkte[1], punkte[0], kante, 9), f.anPunkt([0, -aussen], 2 * aussen, 0, 14, { vor: 'Ø ' })],
-  }
+  const [mx, my] = b.px([0, 0])
+  b.roh(`<circle cx="${f1(mx)}" cy="${f1(my)}" r="${f1(b.px([aussen, 0])[0] - mx)}" ${HILF}/>`)
+  b.zug(punkte, FLAECHE, true)
+  b.kette([[-aussen, -aussen], [aussen, -aussen]], { h: b.kante.unten + KETTE_1 }, { werte: [2 * aussen], vor: ['Ø '] })
+  // Stablänge an der ersten Kante links der oberen Spitze, außen
+  b.kette([punkte[1], punkte[0]], { p: 12 }, { werte: [kante] })
+  return b.fertig()
 }
 
 /** Dreieck mit c als Grundseite, α links, β rechts. */
-export function zeichneDreieck(a: number, b: number, c: number, alphaGrad: number): Zeichnung | undefined {
-  if (!gueltig(a, b, c, alphaGrad)) return undefined
+export function zeichneDreieck(a: number, b_: number, c: number, alphaGrad: number): Zeichnung | undefined {
+  if (!gueltig(a, b_, c, alphaGrad)) return undefined
   const rad = (alphaGrad * Math.PI) / 180
   const A: Punkt = [0, 0]
   const B: Punkt = [c, 0]
-  const C: Punkt = [b * Math.cos(rad), b * Math.sin(rad)]
-  const f = flaeche([A, B, C], { l: 30, r: 30, o: 22, u: 24 })
-  // Beschriftung immer auf der Außenseite: bei überhängender Spitze wechselt die Seite
-  const aussenB = C[0] >= 0 ? 10 : -10
-  const aussenA = C[0] <= c ? 10 : -10
+  const C: Punkt = [b_ * Math.cos(rad), b_ * Math.sin(rad)]
+  const b = blatt([A, B, C], { l: 36, r: 36, o: 32, u: 30 })
+  b.zug([A, B, C], FLAECHE, true)
+  // Maßketten immer auf der Außenseite: bei überhängender Spitze wechselt die Seite
+  b.kette([A, B], { h: b.kante.unten + KETTE_1 }, { werte: [c], vor: ['c = '] })
+  b.kette([A, C], { p: C[0] >= 0 ? 14 : -14 }, { werte: [b_], vor: ['b = '] })
+  b.kette([B, C], { p: C[0] <= c ? 14 : -14 }, { werte: [a], vor: ['a = '] })
   // Winkel innen an der Ecke, auf der Winkelhalbierenden; entfällt, wenn die Ecke dafür zu eng ist
-  const winkel = (ecke: Punkt, p: Punkt, q: Punkt): Mass[] => {
-    const [e, p1, q1] = [f.px(ecke), f.px(p), f.px(q)]
+  const winkel = (ecke: Punkt, p: Punkt, q: Punkt): void => {
+    const [e, p1, q1] = [b.px(ecke), b.px(p), b.px(q)]
     const [l1, l2] = [Math.hypot(p1[0] - e[0], p1[1] - e[1]), Math.hypot(q1[0] - e[0], q1[1] - e[1])]
     const u: Punkt = [(p1[0] - e[0]) / l1, (p1[1] - e[1]) / l1]
     const v: Punkt = [(q1[0] - e[0]) / l2, (q1[1] - e[1]) / l2]
     const halb = Math.acos(Math.max(-1, Math.min(1, u[0] * v[0] + u[1] * v[1]))) / 2
-    const abstand = Math.max(16, 14 / Math.sin(halb))
-    if (abstand > 0.5 * Math.min(l1, l2)) return []
+    const abstand = Math.max(18, 15 / Math.sin(halb))
+    if (abstand > 0.5 * Math.min(l1, l2)) return
     const bl = Math.hypot(u[0] + v[0], u[1] + v[1]) || 1
-    return [{ x: e[0] + ((u[0] + v[0]) / bl) * abstand, y: e[1] + ((u[1] + v[1]) / bl) * abstand, wert: (halb * 360) / Math.PI, art: 'ang', klein: true }]
+    b.mass({ x: e[0] + ((u[0] + v[0]) / bl) * abstand, y: e[1] + ((u[1] + v[1]) / bl) * abstand, wert: (halb * 360) / Math.PI, art: 'ang', klein: true })
   }
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: f.zug([A, B, C], FLAECHE, true),
-    masse: [
-      f.anStrecke(A, B, c, -10, { vor: 'c = ' }),
-      f.anStrecke(A, C, b, aussenB, { vor: 'b = ' }),
-      f.anStrecke(B, C, a, aussenA, { vor: 'a = ' }),
-      ...winkel(A, B, C),
-      ...winkel(B, A, C),
-      ...winkel(C, A, B),
-    ],
-  }
+  winkel(A, B, C)
+  winkel(B, A, C)
+  winkel(C, A, B)
+  return b.fertig()
 }
 
 export function zeichnePultdach(breite: number, ueberstandTief: number, ueberstandHoch: number, neigungGrad: number): Zeichnung | undefined {
@@ -337,23 +401,15 @@ export function zeichnePultdach(breite: number, ueberstandTief: number, uebersta
   const t = Math.tan(rad)
   if (!gueltig(breite, ueberstandTief, ueberstandHoch, t)) return undefined
   const a: Punkt = [-ueberstandTief, -ueberstandTief * t]
-  const b: Punkt = [breite + ueberstandHoch, (breite + ueberstandHoch) * t]
-  const hilf: Punkt[] = [
-    [0, 0],
-    [breite, 0],
-    [breite, breite * t],
-  ]
-  const f = flaeche([a, b, ...hilf], { l: 20, r: 50, o: 22, u: 24 })
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: f.zug(hilf, HILF) + f.zug([a, b], 'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"'),
-    masse: [
-      f.anStrecke([0, 0], [breite, 0], breite, -10),
-      f.anStrecke(a, b, (breite + ueberstandTief + ueberstandHoch) / Math.cos(rad), 10),
-      f.anPunkt([breite, (breite * t) / 2], breite * t, 5, 0, { anker: 'start' }),
-    ],
-  }
+  const e: Punkt = [breite + ueberstandHoch, (breite + ueberstandHoch) * t]
+  const b = blatt([a, e, [0, 0], [breite, 0]], { l: 16, r: 34, o: 30, u: 38 })
+  b.zug([[0, 0], [breite, 0], [breite, breite * t]], HILF)
+  b.zug([a, e], DICK)
+  b.kette([[a[0], 0], [0, 0], [breite, 0], [e[0], 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[breite, 0], [breite, breite * t]], { v: b.kante.rechts + KETTE_1 })
+  b.kette([a, e], { p: KETTE_1 })
+  b.anPunkt([breite * 0.6, 0], neigungGrad, 0, -8, { art: 'ang' })
+  return b.fertig()
 }
 
 /** Schnitt durch die Schleppgaube: Hauptdach, Gaubenfront und Gaubendach. */
@@ -363,21 +419,19 @@ export function zeichneGaube(neigungHaupt: number, neigungGaube: number, hoeheFr
   if (!gueltig(tH, tG, hoeheFront, lauf)) return undefined
   const oben: Punkt = [lauf, lauf * tH]
   const haupt: Punkt[] = [
-    [-0.3 * lauf, -0.3 * lauf * tH],
-    [1.25 * lauf, 1.25 * lauf * tH],
+    [-0.25 * lauf, -0.25 * lauf * tH],
+    [1.2 * lauf, 1.2 * lauf * tH],
   ]
-  const f = flaeche([...haupt, [0, hoeheFront]], { l: 44, r: 20, o: 22, u: 24 })
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: f.zug([[0, 0], [lauf, 0], oben], HILF) + f.zug(haupt, LINIE) + f.zug([[0, 0], [0, hoeheFront], oben], 'fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"'),
-    masse: [
-      f.anPunkt([0, hoeheFront / 2], hoeheFront, -5, 0, { anker: 'end' }),
-      f.anStrecke([0, 0], [lauf, 0], lauf, -10),
-      f.anStrecke([0, hoeheFront], oben, lauf / Math.cos((neigungGaube * Math.PI) / 180), 10),
-      f.anStrecke([0, 0], oben, lauf / Math.cos((neigungHaupt * Math.PI) / 180), 0, { hinterlegt: true }),
-    ],
-  }
+  const b = blatt([...haupt, [0, hoeheFront]], { l: 34, r: 16, o: 32, u: 30 })
+  b.zug([[0, 0], [lauf, 0], oben], HILF)
+  b.zug(haupt, LINIE)
+  b.zug([[0, 0], [0, hoeheFront], oben], 'fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"')
+  b.kette([[0, 0], [lauf, 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[0, 0], [0, hoeheFront]], { v: b.px([0, 0])[0] - KETTE_1 })
+  b.kette([[0, hoeheFront], oben], { p: KETTE_1 })
+  // Anschlusslänge auf dem Hauptdach: direkt auf der Linie, eine Kette läge im Gaubenkörper
+  b.aufStrecke([0, 0], oben, lauf / Math.cos((neigungHaupt * Math.PI) / 180))
+  return b.fertig()
 }
 
 /** Grundriss des Zelt- oder Turmdachs: Traufen als Vieleck, Grate zur Spitze. */
@@ -389,13 +443,12 @@ export function zeichneZeltdach(seiten: number, seitenlaenge: number, gratGrund:
     const w = -Math.PI / 2 - Math.PI / seiten + (i * 2 * Math.PI) / seiten
     ecken.push([gratGrund * Math.cos(w), gratGrund * Math.sin(w)])
   }
-  const f = flaeche(ecken, { l: 16, r: 16, o: 14, u: 26 })
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt: f.zug(ecken, FLAECHE, true) + ecken.map((e) => f.zug([[0, 0], e], LINIE)).join(''),
-    masse: [f.anStrecke(ecken[0], ecken[1], seitenlaenge, -10), f.anStrecke([0, 0], ecken[1], gratGrund, 0, { hinterlegt: true })],
-  }
+  const b = blatt(ecken, { l: 20, r: 20, o: 14, u: 30 })
+  b.zug(ecken, FLAECHE, true)
+  for (const e of ecken) b.zug([[0, 0], e], LINIE)
+  b.kette([ecken[0], ecken[1]], { h: b.kante.unten + KETTE_1 }, { werte: [seitenlaenge] })
+  b.aufStrecke([0, 0], ecken[1], gratGrund)
+  return b.fertig()
 }
 
 /**
@@ -412,23 +465,22 @@ export function zeichneSattelgaube(breite: number, trauflaenge: number, firstEnd
     [0, firstEnde],
     [-h, trauflaenge],
   ]
-  const f = flaeche(umriss, { l: 30, r: 30, o: 14, u: 24 })
-  const dick = 'fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"'
-  let inhalt = f.zug(umriss, FLAECHE, true) + f.zug([[0, walmGrund], [0, firstEnde]], LINIE)
+  const b = blatt(umriss, { l: 34, r: 34, o: 14, u: 30 })
+  b.zug(umriss, FLAECHE, true)
+  b.zug([[0, walmGrund], [0, firstEnde]], LINIE)
   // Kehlen zum Hauptdach
-  inhalt += f.zug([[-h, trauflaenge], [0, firstEnde]], dick) + f.zug([[h, trauflaenge], [0, firstEnde]], dick)
-  if (walmGrund > 0) inhalt += f.zug([[-h, 0], [0, walmGrund]], LINIE) + f.zug([[h, 0], [0, walmGrund]], LINIE)
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt,
-    masse: [
-      f.anStrecke([-h, 0], [h, 0], breite, -10),
-      ...(trauflaenge > 0 ? [f.anStrecke([-h, 0], [-h, trauflaenge], trauflaenge, 10)] : []),
-      f.anStrecke([0, walmGrund], [0, firstEnde], firstEnde - walmGrund, 0, { hinterlegt: true }),
-      f.anStrecke([h, trauflaenge], [0, firstEnde], kehlGrund, 0, { hinterlegt: true }),
-    ],
+  b.zug([[-h, trauflaenge], [0, firstEnde]], DICK)
+  b.zug([[h, trauflaenge], [0, firstEnde]], DICK)
+  if (walmGrund > 0) {
+    b.zug([[-h, 0], [0, walmGrund]], LINIE)
+    b.zug([[h, 0], [0, walmGrund]], LINIE)
   }
+  b.kette([[-h, 0], [h, 0]], { h: b.kante.unten + KETTE_1 })
+  // links: Trauflänge und der Rest bis zum Firstende; rechts: Walm-Grundmaß und First
+  b.kette([[-h, 0], [-h, trauflaenge], [0, firstEnde]], { v: b.kante.links - KETTE_1 })
+  b.kette(walmGrund > 0 ? [[h, 0], [0, walmGrund], [0, firstEnde]] : [[h, 0], [0, firstEnde]], { v: b.kante.rechts + KETTE_1 })
+  b.aufStrecke([h, trauflaenge], [0, firstEnde], kehlGrund)
+  return b.fertig()
 }
 
 /** Draufsicht auf die Sparrenlage mit Fenster, Wechseln und gekappten Sparren. */
@@ -443,7 +495,7 @@ export function zeichneDachfenster(
 ): Zeichnung | undefined {
   if (!gueltig(fensterbreite, fensterhoehe, achsmass, sparrenbreite, gekappt, wechsellaenge, wechselabstand)) return undefined
   const s = sparrenbreite
-  const ueber = Math.max(wechselabstand * 0.35, 3 * s)
+  const ueber = Math.max(wechselabstand * 0.3, 3 * s)
   const [unten, oben] = [-ueber - s, wechselabstand + s + ueber]
   const balken = (x: number, y0: number, y1: number): Punkt[] => [
     [x, y0],
@@ -451,18 +503,20 @@ export function zeichneDachfenster(
     [x + s, y1],
     [x, y1],
   ]
-  const f = flaeche(
+  const b = blatt(
     [
       [0, unten],
       [wechsellaenge + 2 * s, oben],
     ],
-    { l: 16, r: 44, o: 24, u: 14 }
+    { l: 16, r: 36, o: 46, u: 14 }
   )
   // durchlaufende Sparren links und rechts
-  let inhalt = f.zug(balken(0, unten, oben), FLAECHE, true) + f.zug(balken(s + wechsellaenge, unten, oben), FLAECHE, true)
+  b.zug(balken(0, unten, oben), FLAECHE, true)
+  b.zug(balken(s + wechsellaenge, unten, oben), FLAECHE, true)
   // gekappte Sparren enden an den Wechseln
   for (let i = 1; i <= gekappt; i++) {
-    inhalt += f.zug(balken(i * achsmass, unten, -s), FLAECHE, true) + f.zug(balken(i * achsmass, wechselabstand + s, oben), FLAECHE, true)
+    b.zug(balken(i * achsmass, unten, -s), FLAECHE, true)
+    b.zug(balken(i * achsmass, wechselabstand + s, oben), FLAECHE, true)
   }
   // Wechsel unten und oben
   const wechsel = (y: number): Punkt[] => [
@@ -471,7 +525,8 @@ export function zeichneDachfenster(
     [s + wechsellaenge, y + s],
     [s, y + s],
   ]
-  inhalt += f.zug(wechsel(-s), FLAECHE, true) + f.zug(wechsel(wechselabstand), FLAECHE, true)
+  b.zug(wechsel(-s), FLAECHE, true)
+  b.zug(wechsel(wechselabstand), FLAECHE, true)
   // Fenster mittig im Feld
   const fx = s + (wechsellaenge - fensterbreite) / 2
   const fy = (wechselabstand - fensterhoehe) / 2
@@ -481,15 +536,13 @@ export function zeichneDachfenster(
     [fx + fensterbreite, fy + fensterhoehe],
     [fx, fy + fensterhoehe],
   ]
-  inhalt += f.zug(fenster, LINIE, true) + f.zug([fenster[0], fenster[2]], HILF) + f.zug([fenster[1], fenster[3]], HILF)
-  return {
-    breite: BREITE,
-    hoehe: f.hoehe,
-    inhalt,
-    masse: [
-      f.anStrecke([s, wechselabstand + s], [s + wechsellaenge, wechselabstand + s], wechsellaenge, 9),
-      f.anStrecke(fenster[0], fenster[1], fensterbreite, 9, { hinterlegt: true }),
-      f.anPunkt([s + wechsellaenge + s, wechselabstand / 2], wechselabstand, 5, 0, { anker: 'start' }),
-    ],
-  }
+  b.zug(fenster, LINIE, true)
+  b.zug([fenster[0], fenster[2]], HILF)
+  b.zug([fenster[1], fenster[3]], HILF)
+  // oben: Rest – Fenster – Rest, darüber die Wechsellänge; rechts: Luft – Fenster – Luft
+  b.kette([[s, oben], [fx, oben], [fx + fensterbreite, oben], [s + wechsellaenge, oben]], { h: b.kante.oben - KETTE_1 })
+  b.kette([[s, oben], [s + wechsellaenge, oben]], { h: b.kante.oben - KETTE_2 })
+  const rechts = wechsellaenge + 2 * s
+  b.kette([[rechts, 0], [rechts, fy], [rechts, fy + fensterhoehe], [rechts, wechselabstand]], { v: b.kante.rechts + KETTE_1 })
+  return b.fertig()
 }

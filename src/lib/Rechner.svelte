@@ -175,13 +175,14 @@
   .zeichnung {
     display: block;
     width: 100%;
-    max-width: 26rem;
+    max-width: 34rem;
     margin: 0.75rem auto 0.25rem;
     color: var(--akzent);
   }
   .mass {
     fill: var(--text);
-    font-size: 10px;
+    font-size: 10.5px;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
     /* heller Rand, damit die Zahl auch über Linien lesbar bleibt */
     paint-order: stroke;
