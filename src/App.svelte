@@ -1,6 +1,7 @@
 <script lang="ts">
   import { RECHNER, rechnerNachId } from './calcs'
   import { VORLAGEN } from './core/dokumente'
+  import Assistent from './lib/Assistent.svelte'
   import Dokument from './lib/Dokument.svelte'
   import Info from './lib/Info.svelte'
   import Neigungsmesser from './lib/Neigungsmesser.svelte'
@@ -14,7 +15,7 @@
   let route = $state(ausHash())
   const aktiv = $derived(rechnerNachId(route))
   const projektSeite = $derived(route === 'projekte' || route.startsWith('import/'))
-  const titel = $derived(aktiv?.titel ?? (projektSeite ? 'Projekte & Notizen' : route === 'info' ? 'Info & Datenschutz' : ''))
+  const titel = $derived(aktiv?.titel ?? (projektSeite ? 'Projekte & Notizen' : route === 'info' ? 'Info & Datenschutz' : route === 'ki' ? 'KI-Assistent' : ''))
 
   $effect(() => {
     document.title = titel ? `${t(titel)} – ${t('Holzbau-Spicker')}` : t('Holzbau-Spicker')
@@ -83,6 +84,8 @@
     {/if}
   {:else if route === 'info'}
     <Info />
+  {:else if route === 'ki'}
+    <Assistent />
   {:else if projektSeite}
     {#key route}
       <Projekte importText={route.startsWith('import/') ? route.slice(7) : ''} />

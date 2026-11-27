@@ -5,7 +5,7 @@ import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
 import { zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
-import { ZIEGEL } from './ziegel'
+import { alleZiegel } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
@@ -320,8 +320,13 @@ export const RECHNER: Rechner[] = [
         vorgabe: 'eigen',
         hinweis: 'Richtwerte aus Herstellerunterlagen, Stand 11/2026 – Decklänge an der gelieferten Ware ausmitteln',
         roheOptionen: true,
-        optionen: [{ wert: 'eigen', label: 'eigene Werte' }, ...ZIEGEL.map((z) => ({ wert: z.id, label: z.name }))],
-        setzt: Object.fromEntries(ZIEGEL.map((z) => [z.id, { min: z.min, max: z.max }])),
+        // als Getter: die eigenen Ziegel können sich ändern, während die App läuft
+        get optionen() {
+          return [{ wert: 'eigen', label: 'eigene Werte' }, ...alleZiegel().map((z) => ({ wert: z.id, label: z.name }))]
+        },
+        get setzt() {
+          return Object.fromEntries(alleZiegel().map((z) => [z.id, { min: z.min, max: z.max }]))
+        },
       },
       { id: 'sl', label: 'Sparrenlänge', art: 'len', hinweis: 'Traufkante bis Firstpunkt, auf der Konterlatte gemessen' },
       { id: 't', label: 'Traufkante bis OK erste Latte', art: 'len' },

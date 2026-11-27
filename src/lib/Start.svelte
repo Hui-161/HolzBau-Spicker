@@ -49,6 +49,11 @@
   <strong>{aktivesProjekt().name}</strong>
   <span class="mehr">{t('Projekte & Notizen')} ›</span>
 </a>
+<a class="projekt" href="#/ki">
+  <span>{t('KI-Assistent')}</span>
+  <strong>{t('Sprechen, Datenblatt lesen')}</strong>
+  <span class="mehr">{t('freiwillig, eigener API-Schlüssel')} ›</span>
+</a>
 
 <input class="suche" type="search" placeholder={t('Funktion oder Schlagwort suchen …')} aria-label={t('Funktion oder Schlagwort suchen')} bind:value={suche} />
 

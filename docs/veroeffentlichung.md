@@ -121,3 +121,11 @@ npm test        # Rechenkern, Suche, Übersetzung, Anzeigetext
 npm run e2e     # Browsertests gegen die gebaute App
 npm run build   # nach dist/
 ```
+
+## KI-Assistent
+
+- [ ] Datenschutztext wegen der Übertragung an die Claude-API juristisch prüfen lassen (Drittlandübermittlung, Hinweis an Nutzer)
+- [ ] Mit echtem API-Schlüssel testen: Aufgabe per Text und Diktat, Datenblatt als PDF und als Foto, Fehlermeldungen bei falschem Schlüssel und ohne Netz – bisher nur gegen eine nachgestellte API geprüft
+- [ ] Kosten je Anfrage beobachten (Rechnerverzeichnis steht in jeder Anfrage, wird zwischengespeichert)
+- [ ] Mit der IT klären, ob und welche API-Schlüssel im Betrieb verwendet werden dürfen
+

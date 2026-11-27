@@ -58,3 +58,11 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Firmenlogo im Briefkopf der Dokumente
 - Wochenübersicht der Stundenzettel
 - Wirksame Anzahl der Verbindungsmittel und weitere Bemessungshilfen – bewusst zurückgestellt, das ist Statik
+
+## KI-Assistent (freiwillig)
+
+- Nur aktiv, wenn der Nutzer einen eigenen API-Schlüssel der Claude-API hinterlegt; der Schlüssel liegt getrennt von den Projektdaten im Speicher des Geräts (`holzbau.ki`) und kommt in keine Sicherung und keinen Teilen-Link
+- Aufgabe eintippen oder diktieren: Das Modell wählt den Rechner und nennt die Eingaben, gerechnet wird vom Rechenkern (`src/lib/kiwerkzeug.ts`); die Eingaben lassen sich mit einem Knopf in den Rechner übernehmen
+- Datenblatt (PDF oder Foto) lesen: Decklängen als Vorschlag mit Fundstelle, nach Prüfung als eigener Ziegel für den Lattungs-Rechner speicherbar
+- Übertragen werden nur die Frage, die Eingaben abgefragter Rechner und das Datenblatt – keine Projektnamen, Stammdaten oder Notizen (im Browser-Test geprüft)
+

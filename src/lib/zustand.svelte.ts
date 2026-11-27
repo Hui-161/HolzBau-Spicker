@@ -1,4 +1,5 @@
 import type { Art } from '../calcs/types'
+import { setzeEigeneZiegel, type Ziegel } from '../calcs/ziegel'
 
 /** Alles bleibt auf dem Gerät (localStorage) – es werden keine Daten übertragen. */
 
@@ -38,6 +39,8 @@ interface Gespeichert {
   favoriten: string[]
   projekte: Projekt[]
   aktiv: string
+  /** eigene Ziegel für den Lattungs-Rechner, Decklängen in cm */
+  ziegel: Ziegel[]
 }
 
 const SCHLUESSEL = 'holzbau.v1'
@@ -70,6 +73,9 @@ function pruefeProjekt(x: unknown): Projekt | undefined {
   }
 }
 
+const istZiegel = (x: unknown): x is Ziegel =>
+  istObjekt(x) && typeof x.id === 'string' && /^e-[a-z0-9]{1,24}$/.test(x.id) && typeof x.name === 'string' && x.name.trim() !== '' && typeof x.min === 'number' && typeof x.max === 'number' && x.min > 0 && x.max >= x.min && x.max < 1000
+
 /** Macht aus beliebigen Daten (Speicher, Sicherungsdatei) einen gültigen Stand. */
 function pruefeStand(d: Record<string, unknown>): Gespeichert {
   const projekte = (Array.isArray(d.projekte) ? d.projekte : [])
@@ -93,6 +99,7 @@ function pruefeStand(d: Record<string, unknown>): Gespeichert {
     zuletzt: Array.isArray(d.zuletzt) ? d.zuletzt.filter((x): x is string => typeof x === 'string').slice(0, 8) : [],
     projekte,
     aktiv: projekte.some((p) => p.id === d.aktiv) ? (d.aktiv as string) : projekte[0].id,
+    ziegel: (Array.isArray(d.ziegel) ? d.ziegel : []).filter(istZiegel).slice(0, 100).map((z) => ({ id: z.id, name: z.name.slice(0, 80), min: z.min, max: z.max })),
   }
 }
 
@@ -108,6 +115,21 @@ function lade(): Gespeichert {
 }
 
 export const zustand = $state<Gespeichert>(lade())
+setzeEigeneZiegel(zustand.ziegel)
+
+/** Eigenen Ziegel speichern; Decklängen in cm. Liefert die Kennung für die Auswahl im Lattungs-Rechner. */
+export function merkeZiegel(name: string, min: number, max: number): string {
+  const id = `e-${neueId()}`
+  zustand.ziegel = [{ id, name: name.trim().slice(0, 80), min, max }, ...zustand.ziegel].slice(0, 100)
+  setzeEigeneZiegel(zustand.ziegel)
+  sichere()
+  return id
+}
+export function loescheZiegel(id: string): void {
+  zustand.ziegel = zustand.ziegel.filter((z) => z.id !== id)
+  setzeEigeneZiegel(zustand.ziegel)
+  sichere()
+}
 
 export function sichere(): void {
   try {
@@ -136,6 +158,7 @@ export function stelleWiederHer(text: string): unknown[] | false {
     const roh: unknown = JSON.parse(text)
     if (!istObjekt(roh) || roh.kennung !== KENNUNG || !istObjekt(roh.daten) || !Array.isArray(roh.daten.projekte)) return false
     Object.assign(zustand, pruefeStand(roh.daten))
+    setzeEigeneZiegel(zustand.ziegel)
     sichere()
     return Array.isArray(roh.fotos) ? roh.fotos : []
   } catch {

@@ -7,6 +7,7 @@
     ['jsPDF', 'MIT'],
     ['qrcode-generator', 'MIT'],
     ['Workbox', 'MIT'],
+    ['Anthropic SDK', 'MIT'],
   ]
 </script>
 
@@ -29,6 +30,11 @@
     )}
   </p>
   <p>{t('Fotos, Unterschrift und Sensorwerte werden nur auf dem Gerät verarbeitet und nicht gespeichert.')}</p>
+  <p>
+    {t(
+      'Ausnahme ist der freiwillige KI-Assistent: Er ist nur aktiv, wenn du einen eigenen API-Schlüssel hinterlegst. Dann gehen deine Frage, die Eingaben der abgefragten Rechner und hochgeladene Datenblätter an die Claude-API von Anthropic (api.anthropic.com). Der Schlüssel liegt nur im Speicher dieses Geräts. Für das Diktat nutzt der Browser seine eigene Spracherkennung.'
+    )}
+  </p>
   <p>
     {t(
       'Beim Aufruf der Seite verarbeitet der Hosting-Anbieter technisch notwendige Verbindungsdaten wie die IP-Adresse. Die App selbst wertet diese Daten nicht aus.'

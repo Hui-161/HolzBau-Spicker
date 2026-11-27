@@ -23,3 +23,15 @@ export const ZIEGEL: Ziegel[] = [
   { id: 'nelskamp-finkenberger', name: 'Nelskamp Finkenberger Pfanne, über 30°', min: 31.4, max: 34.5 },
   { id: 'nelskamp-finkenberger-flach', name: 'Nelskamp Finkenberger Pfanne, 22–30°', min: 31.4, max: 33.5 },
 ]
+
+/**
+ * Vom Nutzer gespeicherte Ziegel (z. B. aus einem Datenblatt gelesen). Die Liste wird vom
+ * Zustand der App befüllt; die Rechner-Definition liest sie beim Anzeigen.
+ */
+let eigene: Ziegel[] = []
+export const eigeneZiegel = (): Ziegel[] => eigene
+export function setzeEigeneZiegel(liste: Ziegel[]): void {
+  eigene = liste
+}
+/** hinterlegte und eigene Ziegel zusammen; eigene zuerst */
+export const alleZiegel = (): Ziegel[] => [...eigene, ...ZIEGEL]

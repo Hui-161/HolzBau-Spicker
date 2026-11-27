@@ -398,3 +398,62 @@ test('Menüleiste springt zwischen Funktionen, Laufmaß wechselt die Seite', asy
   await page.locator('select').last().selectOption('links')
   await expect(page.locator('.ergebnis tbody tr').first().locator('td').nth(1)).toHaveText('54,0')
 })
+
+test('KI-Assistent: Schlüssel hinterlegen, Aufgabe stellen, Vorschlag in den Rechner übernehmen', async ({ page }) => {
+  const fehler = sammleFehler(page)
+  await mitSprache(page, 'de')
+  // Die API wird nachgestellt: erste Antwort ruft das Werkzeug „rechne“ auf, die zweite fasst zusammen
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' }
+  const anfragen: { schluessel: string | undefined; koerper: string }[] = []
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    const req = route.request()
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+    const kopf = await req.allHeaders()
+    anfragen.push({ schluessel: kopf['x-api-key'] ?? kopf['authorization'], koerper: req.postData() ?? '' })
+    const nachricht = (content: unknown[], stop: string) => ({ id: `msg_${anfragen.length}`, type: 'message', role: 'assistant', model: 'claude-opus-5-5', content, stop_reason: stop, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 } })
+    const antwort =
+      anfragen.length === 1
+        ? nachricht([{ type: 'tool_use', id: 'toolu_1', name: 'rechne', input: { rechner: 'sparren', werte: { g: 400, a: 35, ue: 50, h: 18, k: 3 } } }], 'tool_use')
+        : nachricht([{ type: 'text', text: 'Sparren gerechnet: Sparrenlänge gesamt 549,3 cm.' }], 'end_turn')
+    await route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(antwort) })
+  })
+  // Projektname, Stammdaten und Notiz dürfen die App nicht verlassen
+  await page.addInitScript(() => {
+    if (localStorage.getItem('holzbau.marker')) return
+    localStorage.setItem('holzbau.marker', '1')
+    const d = JSON.parse(localStorage.getItem('holzbau.v1') ?? '{}')
+    d.stammdaten = { absender: 'GEHEIM-FIRMA', ort: 'GEHEIM-ORT', unterzeichner: 'GEHEIM-NAME' }
+    d.projekte = [{ id: 'p1', name: 'GEHEIM-PROJEKT', notiz: 'GEHEIM-NOTIZ', daten: { bauvorhaben: 'GEHEIM-BV', empfaenger: '', auftrag: '' }, eingaben: {} }]
+    d.aktiv = 'p1'
+    localStorage.setItem('holzbau.v1', JSON.stringify(d))
+  })
+  await page.goto('./#/ki')
+  // ohne Schlüssel gibt es keine Eingabe für Aufgaben
+  await expect(page.locator('form.frage')).toHaveCount(0)
+  await page.locator('input[type=password]').fill('sk-ant-test-0000')
+  await expect(page.getByRole('button', { name: 'Schlüssel speichern' })).toBeDisabled()
+  await page.locator('label.haken input').check()
+  await page.getByRole('button', { name: 'Schlüssel speichern' }).click()
+  await expect(page.locator('main')).toContainText('endet auf')
+  await page.locator('form.frage textarea').fill('Sparren mit Grundmaß 4 Meter, 35 Grad, 50 Überstand, Höhe 18, Kerve 3')
+  await page.getByRole('button', { name: 'Senden' }).click()
+  await expect(page.locator('.beitrag.ki')).toContainText('549,3')
+  // zwei Anfragen mit dem hinterlegten Schlüssel; die zweite trägt das Ergebnis des Rechenkerns
+  expect(anfragen).toHaveLength(2)
+  expect(anfragen[0].schluessel).toContain('sk-ant-test-0000')
+  expect(anfragen[1].koerper).toContain('Sparrenlänge gesamt: 549,3 cm')
+  // der Schlüssel liegt getrennt von den Projektdaten und der Projektname geht nicht mit
+  expect(await page.evaluate(() => localStorage.getItem('holzbau.v1') ?? '')).not.toContain('sk-ant-test')
+  for (const a of anfragen) expect(a.koerper).not.toMatch(/GEHEIM/)
+  // Vorschlag übernehmen: Rechner öffnet sich mit den Werten
+  await page.getByRole('button', { name: 'In den Rechner übernehmen' }).click()
+  await expect(page).toHaveURL(/#\/sparren$/)
+  await expect(page.locator('form[data-sprung] input').first()).toHaveValue('400')
+  await expect(page.locator('.ergebnis')).toContainText('549,3')
+  // Schlüssel wieder löschen
+  await page.goto('./#/ki')
+  await page.getByRole('button', { name: 'Schlüssel vom Gerät löschen' }).click()
+  await expect(page.locator('form.frage')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('holzbau.ki'))).toBeNull()
+  expect(fehler).toEqual([])
+})
