@@ -145,7 +145,7 @@ export function verschnitt(stangenlaengen: number | number[], schnittbreite: num
   pruefe(stueck > 0, 'Bitte mindestens ein Teil eingeben.')
   pruefe(stueck <= 2000, 'Zu viele Teile (höchstens 2000).')
   const alle = teile.flatMap((t) => Array<number>(t.anzahl).fill(t.laenge)).sort((a, b) => b - a)
-  pruefe(alle[0] <= laengen[0] + 1e-9, 'Mindestens ein Teil ist länger als die Stange.')
+  pruefe(alle[0] <= laengen[0] + 1e-9, 'Mindestens ein Teil ist länger als die längste Stange. Längere Stangen eintragen oder das Stoßen überlanger Teile wählen.')
   const genutzt = alle.reduce((a, b) => a + b, 0)
   const material = (st: Stange[]): number => st.reduce((a, s) => a + s.laenge, 0)
 

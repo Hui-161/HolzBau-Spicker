@@ -111,6 +111,8 @@ export interface Rechner {
   info?: string
   /** Inline-SVG (viewBox 0 0 240 120), nutzt currentColor */
   skizze?: string
+  /** Werte aus einem anderen Rechner desselben Projekts übernehmen: Quelle und Abbildung auf die eigenen Felder */
+  uebernahme?: { von: string; werte: (quelle: Werte) => Record<string, number> | undefined }
   /** Zeichnung zum Eintragen der Werte, solange noch kein Ergebnis da ist (ersetzt Skizze und Formular) */
   vorschau?: (w: Werte) => Zeichnung | undefined
   /** eigene Ansicht statt Felder + Ergebnis (z. B. Sensor) */

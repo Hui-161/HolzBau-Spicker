@@ -2,7 +2,7 @@ import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, gratAn
 import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig, stern } from '../core/dreieck'
 import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
-import { leseStueckliste, zuschnitt } from '../core/stueckliste'
+import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
 import { zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
@@ -159,6 +159,16 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'grat',
+    // Neigung, Grundmaß, Obholz und Traufabschnitt des Hauptdachs stehen schon im Sparren-Rechner
+    uebernahme: {
+      von: 'sparren',
+      werte: (q) => {
+        const [g, a, h, k] = [q.g as number, q.a as number, q.h as number, q.k as number]
+        if (![g, a].every(Number.isFinite) || !(a > 0 && a < 90)) return undefined
+        const obholz = Number.isFinite(h) && h > 0 ? (h - (Number.isFinite(k) ? k : 0)) / Math.cos((a * Math.PI) / 180) : undefined
+        return { ah: a, x: g, th: q.tr === 'winkel' ? 90 : 90 + a, ...(obholz !== undefined && obholz > 0 ? { ob: obholz } : {}) }
+      },
+    },
     titel: 'Grat- und Kehlsparren',
     gruppe: 'Dach',
     kurz: 'Gratlänge, Gratneigung, Abgratung',
@@ -1019,9 +1029,23 @@ export const RECHNER: Rechner[] = [
       { id: 'l', label: 'Stangenlängen', art: 'liste', hinweis: 'eine Länge je Zeile, zum Beispiel 500 und darunter 400' },
       { id: 's', label: 'Schnittbreite (Sägeblatt)', art: 'len', vorgabe: 0 },
       { id: 't', label: 'Stückliste', art: 'liste', hinweis: 'zum Beispiel: 240 x 3 oder Sparren: 480 x 12 @ 8/18' },
+      {
+        id: 'ue',
+        label: 'Teile länger als die längste Stange',
+        art: 'select',
+        vorgabe: 'stossen',
+        optionen: [
+          { wert: 'stossen', label: 'aus mehreren Stangen stoßen' },
+          { wert: 'fehler', label: 'nicht zulassen' },
+        ],
+      },
     ],
     rechne: (w) => {
-      const r = zuschnitt(leseLaengen(String(w.l)), zahl(w, 's'), leseStueckliste(String(w.t)))
+      const laengen = leseLaengen(String(w.l))
+      const liste = leseStueckliste(String(w.t))
+      // überlange Teile in ganze Stangen und ein Reststück zerlegen, wenn gewünscht
+      const gestossen = w.ue === 'fehler' || laengen.length === 0 ? { teile: liste, stoesse: 0 } : stosse(liste, Math.max(...laengen))
+      const r = zuschnitt(laengen, zahl(w, 's'), gestossen.teile)
       // Spalten für Querschnitt und Bezeichnung nur zeigen, wenn die Liste sie enthält
       const mitQ = r.gruppen.some((g) => g.querschnitt !== '')
       const mitNamen = r.gruppen.some((g) => g.stangen.some((x) => x.namen.length > 0))
@@ -1032,8 +1056,10 @@ export const RECHNER: Rechner[] = [
           { label: 'Stangen', wert: r.anzahl, art: 'int', wichtig: true },
           L('Rest gesamt', r.rest, true),
           { label: 'Ausnutzung', wert: r.ausnutzung, art: 'num', einheit: '%', stellen: 1 },
-          { label: 'Anzahl Teile', wert: r.teile, art: 'int' },
+          { label: gestossen.stoesse > 0 ? 'Anzahl Teilstücke' : 'Anzahl Teile', wert: r.teile, art: 'int' },
+          ...(gestossen.stoesse > 0 ? [{ label: 'Stöße in überlangen Teilen', wert: gestossen.stoesse, art: 'int' } as Ausgabe] : []),
         ],
+        hinweise: gestossen.stoesse > 0 ? ['Mindestens ein Teil ist länger als die längste Stange und wurde aus mehreren Stangen gestoßen. Ob ein Stoß zulässig ist, wo er liegt und wie er verbunden wird, ist selbst festzulegen.'] : [],
         liste: {
           titel: 'Bedarf',
           kopf: [...(mitQ ? ['Querschnitt'] : []), 'Stangenlänge', 'Anzahl'],

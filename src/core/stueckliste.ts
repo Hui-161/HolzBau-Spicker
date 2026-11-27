@@ -94,3 +94,28 @@ export function zuschnitt(stangenlaengen: number[], schnittbreite: number, teile
     bedarf: gruppen.flatMap((g) => g.bedarf.map((b) => ({ querschnitt: g.querschnitt, ...b }))),
   }
 }
+
+/**
+ * Teile, die länger als die längste Stange sind, in ganze Stangen und ein Reststück zerlegen
+ * (stumpfer Längsstoß). Liefert die neue Stückliste und die Zahl der Stöße.
+ * Wo gestoßen wird und wie die Stücke verbunden werden, entscheidet der Nutzer.
+ */
+export function stosse(teile: ListenTeil[], laengste: number): { teile: ListenTeil[]; stoesse: number } {
+  pruefe(laengste > 0, 'Stangenlänge muss größer als 0 sein.')
+  const neu: ListenTeil[] = []
+  let stoesse = 0
+  for (const t of teile) {
+    if (t.laenge <= laengste + 1e-9) {
+      neu.push(t)
+      continue
+    }
+    const ganze = Math.floor(t.laenge / laengste + 1e-9)
+    const rest = t.laenge - ganze * laengste
+    const stuecke = ganze + (rest > 1e-9 ? 1 : 0)
+    pruefe(t.anzahl * stuecke <= 2000, 'Zu viele Teile (höchstens 2000).')
+    neu.push({ ...t, laenge: laengste, anzahl: t.anzahl * ganze })
+    if (rest > 1e-9) neu.push({ ...t, laenge: rest })
+    stoesse += t.anzahl * (stuecke - 1)
+  }
+  return { teile: neu, stoesse }
+}

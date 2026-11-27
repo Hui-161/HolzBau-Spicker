@@ -59,6 +59,9 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Wochenübersicht der Stundenzettel
 - Wirksame Anzahl der Verbindungsmittel und weitere Bemessungshilfen – bewusst zurückgestellt, das ist Statik
 - Abstände Verbindungsmittel mit maßstäblicher Detailzeichnung (vier Verbindungsmittel am Holzende, Kraftrichtung, alle Mindestabstände in mm)
+- Dreiecke: eine Zeichnung, in der die Maße angetippt und eingetragen werden (keine Feldliste)
+- Gratsparren: Neigung, Grundmaß, Traufabschnitt und Obholz auf Knopfdruck aus dem Sparren-Rechner übernehmen
+- Zuschnitt: Teile, die länger als die längste Stange sind, wahlweise aus mehreren Stangen stoßen
 
 ## KI-Assistent (freiwillig)
 

@@ -173,7 +173,10 @@ export function grat(e: GratEingabe) {
   const b2 = e.breite / 2
   const aH = e.abschnittHaupt ?? 90
   const aW = e.abschnittWalm ?? 90
-  pruefe(Math.abs(aH - e.neigungHaupt) < 90 && Math.abs(aW - e.neigungWalm) < 90, 'Mit diesem Traufabschnitt ist kein Hexenschnitt möglich.')
+  // genau lotrechter Traufabschnitt (90° + Dachneigung) ist zulässig: die Schnittebene steht dann senkrecht
+  pruefe(Math.abs(aH - e.neigungHaupt) <= 90 + 1e-9 && Math.abs(aW - e.neigungWalm) <= 90 + 1e-9, 'Mit diesem Traufabschnitt ist kein Hexenschnitt möglich.')
+  // Hexenschnitt an der Seitenfläche; bei lotrechter Schnittebene wird er zum Senkelschnitt am Grat (Grenzwert der Formel)
+  const hexe = (winkel: number, ab: number): number => gratNeigung + (Math.abs(Math.abs(ab) - 90) < 1e-9 ? Math.sign(ab) * 90 : atan(sin(winkel) * tan(ab)))
   return {
     hoehe,
     grundmassWalm: w,
@@ -196,8 +199,8 @@ export function grat(e: GratEingabe) {
      * Hexenschnitt: Winkel zwischen Gratoberkante und der Schnittlinie, in der die
      * Traufabschnitt-Ebene der Sparren die Seitenfläche des Gratsparrens trifft.
      */
-    hexeHaupt: gratNeigung + atan(sin(winkelHaupt) * tan(aH - e.neigungHaupt)),
-    hexeWalm: gratNeigung + atan(sin(winkelWalm) * tan(aW - e.neigungWalm)),
+    hexeHaupt: hexe(winkelHaupt, aH - e.neigungHaupt),
+    hexeWalm: hexe(winkelWalm, aW - e.neigungWalm),
   }
 }
 

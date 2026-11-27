@@ -154,6 +154,34 @@ test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {
   expect(fehler).toEqual([])
 })
 
+test('Gratsparren übernimmt Werte aus dem Sparren, Zuschnitt stößt überlange Teile', async ({ page }) => {
+  const fehler = sammleFehler(page)
+  await mitSprache(page, 'de')
+  await page.goto('./#/grat')
+  // ohne Sparren-Eingaben gibt es nichts zu übernehmen
+  await expect(page.locator('.uebernahme')).toHaveCount(0)
+  await page.goto('./#/sparren')
+  const sparren = page.locator('form[data-sprung] input')
+  for (const [n, wert] of ['400', '35', '50', '18', '3'].entries()) await sparren.nth(n).fill(wert)
+  await page.goto('./#/grat')
+  await page.locator('.uebernahme button').click()
+  const grat = page.locator('form[data-sprung] input')
+  await expect(grat.nth(0)).toHaveValue('35') // Neigung Hauptdach
+  await expect(grat.nth(2)).toHaveValue('400') // Grundmaß Hauptdach
+  await expect(grat.nth(5)).toHaveValue('125') // Traufabschnitt lotrecht: 90° + Neigung
+  await expect(grat.nth(8)).toHaveValue('18,31') // Obholz lotrecht (18 − 3) / cos 35°
+  await expect(page.locator('.ergebnis dl')).toBeVisible()
+
+  await page.goto('./#/verschnitt')
+  await page.locator('textarea').nth(0).fill('400\n500\n600')
+  await page.locator('textarea').nth(1).fill('1300 x 4')
+  await expect(page.locator('.ergebnis')).toContainText('Stöße in überlangen Teilen')
+  await expect(page.locator('.ergebnis .fehler')).toContainText('gestoßen')
+  await page.locator('form select').selectOption('fehler')
+  await expect(page.locator('.ergebnis .fehler')).toContainText('länger als die längste Stange')
+  expect(fehler).toEqual([])
+})
+
 test('Schlagwortsuche findet abweichende Namen und Tippfehler', async ({ page }) => {
   await mitSprache(page, 'de')
   await page.goto('./')

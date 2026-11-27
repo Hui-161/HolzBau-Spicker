@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Art, Ergebnis, Feld, Liste, Mass, Rechner, Werte, Zeichnung } from '../calcs/types'
+  import { rechnerNachId } from '../calcs'
   import { EingabeFehler } from '../core/trig'
+  import { werteAus } from './werte'
   import { t, tSkizze } from './sprache.svelte'
   import { aktivesProjekt, einheitVon, formatiere, JE_CM, leseZahl, schalteFavorit, sichere, zustand } from './zustand.svelte'
 
@@ -154,6 +156,22 @@
     document.querySelector(`[data-sprung="${k}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // Werte aus einem anderen Rechner dieses Projekts anbieten (z. B. Gratsparren aus dem Sparren)
+  const quelle = $derived(rechner.uebernahme ? rechnerNachId(rechner.uebernahme.von) : undefined)
+  const angebot = $derived.by<Record<string, number> | undefined>(() => {
+    const gespeichert = quelle ? aktivesProjekt().eingaben[quelle.id] : undefined
+    return quelle && gespeichert && rechner.uebernahme ? rechner.uebernahme.werte(werteAus(quelle, gespeichert)) : undefined
+  })
+  let uebernommen = $state(false)
+  function uebernimmWerte() {
+    for (const [id, wert] of Object.entries(angebot ?? {})) {
+      const text = String(Math.round(wert * 100) / 100)
+      roh[id] = zustand.sprache === 'de' ? text.replace('.', ',') : text
+    }
+    merke()
+    uebernommen = true
+  }
+
   /** Enter springt ins nächste Eingabefeld; im letzten Feld schließt es die Tastatur */
   function weiter(e: KeyboardEvent) {
     const ziel = e.target as HTMLElement
@@ -229,6 +247,12 @@
   {/if}
 {/if}
 
+{#if angebot && quelle}
+  <p class="uebernahme nicht-drucken">
+    <button type="button" onclick={uebernimmWerte}>{t('Werte aus dem Rechner übernehmen:')} {t(quelle.titel)}</button>
+    {#if uebernommen}<span>✓ {t('übernommen')}</span>{/if}
+  </p>
+{/if}
 {#if imFormular.length > 0}
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <form data-sprung="eingabe" onsubmit={(e) => e.preventDefault()} oninput={merke} onchange={merke} onkeydown={weiter}>
@@ -462,6 +486,22 @@
   }
   :global([data-sprung]) {
     scroll-margin-top: 4.5rem;
+  }
+  .uebernahme {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.75rem;
+  }
+  .uebernahme button {
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border: 1px dashed var(--akzent);
+    border-radius: 0.6rem;
+    background: var(--flaeche);
+    color: inherit;
+    font: inherit;
   }
   form {
     display: grid;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gaubenSparrenliste, grat, gratAnfall, gratKerve, kehlbalken, sattelgaube, schleppgaube, sparren, walmgaube, zeltdach } from './dach'
-import { leseStueckliste, zuschnitt } from './stueckliste'
+import { leseStueckliste, stosse, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
 import { mindestabstaendeStift, mindestholzdicke } from './verbindung'
 
@@ -375,5 +375,42 @@ describe('Details: Kehlbalken, Zeltdach, Schleppgaube, Pultsparren', () => {
     nah(r.mittelpfette!.hoehe, 388 * Math.tan(rad(10)))
     nah(r.anriss.first, 450 / Math.cos(rad(10)))
     nah(r.mittelpfette!.senkel, 418 / Math.cos(rad(10)))
+  })
+})
+
+describe('Zuschnitt: überlange Teile stoßen', () => {
+  it('zerlegt in ganze Stangen und ein Reststück, die Gesamtlänge bleibt gleich', () => {
+    const liste = leseStueckliste('1300 x 4\n240 x 2')
+    const r = stosse(liste, 600)
+    // 1300 = 2 × 600 + 100 → je Teil zwei Stöße
+    expect(r.stoesse).toBe(8)
+    const summe = (t: { laenge: number; anzahl: number }[]) => t.reduce((a, x) => a + x.laenge * x.anzahl, 0)
+    expect(summe(r.teile)).toBeCloseTo(summe(liste), 9)
+    expect(r.teile.every((t) => t.laenge <= 600)).toBe(true)
+    // genau teilbar: kein Reststück, ein Stoß weniger
+    expect(stosse(leseStueckliste('1200 x 1'), 600)).toMatchObject({ stoesse: 1, teile: [{ laenge: 600, anzahl: 2 }] })
+    // nichts zu lang: Liste unverändert
+    expect(stosse(liste.slice(1), 600)).toEqual({ teile: liste.slice(1), stoesse: 0 })
+  })
+  it('der Zuschnitt läuft danach durch, ohne Stoßen bleibt es beim Fehler', () => {
+    const liste = leseStueckliste('1300 x 4')
+    expect(() => zuschnitt([400, 500, 600], 0.6, liste)).toThrow(/längste Stange/)
+    const z = zuschnitt([400, 500, 600], 0.6, stosse(liste, 600).teile)
+    // 8 ganze Stangen zu 600 und vier Reste zu 100
+    expect(z.teile).toBe(12)
+    expect(z.anzahl).toBeGreaterThanOrEqual(9)
+  })
+})
+
+describe('Hexenschnitt bei lotrechtem Traufabschnitt', () => {
+  it('ist der Grenzwert der Formel: Senkelschnitt am Grat', () => {
+    const e = { neigungHaupt: 35, neigungWalm: 40, grundmassHaupt: 400, breite: 12 }
+    const lot = grat({ ...e, abschnittHaupt: 125, abschnittWalm: 130 })
+    nah(lot.hexeHaupt, lot.gratNeigung + 90)
+    nah(lot.hexeWalm, lot.gratNeigung + 90)
+    // knapp daneben nähert sich die Formel diesem Wert
+    const fast = grat({ ...e, abschnittHaupt: 124.999, abschnittWalm: 129.999 })
+    expect(Math.abs(fast.hexeHaupt - lot.hexeHaupt)).toBeLessThan(0.01)
+    expect(() => grat({ ...e, abschnittHaupt: 126 })).toThrow()
   })
 })
