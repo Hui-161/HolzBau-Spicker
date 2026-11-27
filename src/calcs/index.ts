@@ -1143,7 +1143,7 @@ export const RECHNER: Rechner[] = [
       const [bVon, bBis] = r.breiteFormel !== undefined ? [r.breiteFormel, r.breiteFormel] : [r.breiteVon, r.breiteBis]
       const mitB = bVon !== undefined && bBis !== undefined
       return {
-        zeichnung: zeichneTraeger(zahl(w, 'l'), r.hoehe * k.jeCm),
+        zeichnung: zeichneTraeger(zahl(w, 'l'), r.hoehe * k.jeCm, r.faktor === 1 ? 'einfeld' : ta === 'kragarm' ? 'kragarm' : ta === 'mittelfeld' ? 'mittelfeld' : 'endfeld'),
         details: detail(mitB ? 'Detail Querschnitt mit Richtwerten' : 'Detail Querschnitt – Breite nur angedeutet', zeichneQuerschnitt(r.hoehe * k.jeCm, mitB ? (bVon as number) * k.jeCm : undefined, mitB ? (bBis as number) * k.jeCm : undefined)),
         ausgaben: [
           ...(r.hoeheBis !== undefined ? [cm('Querschnittshöhe, Richtwert von', r.hoehe, true), cm('Querschnittshöhe, Richtwert bis', r.hoeheBis, true)] : [cm('Querschnittshöhe, Richtwert', r.hoehe, true)]),

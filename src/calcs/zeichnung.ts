@@ -1452,21 +1452,39 @@ export function zeichneTreppe(steigungen: number, steigung: number, auftritt: nu
   return b.fertig()
 }
 
-/** Träger auf zwei Auflagern in der Ansicht: Spannweite und Querschnittshöhe, maßstäblich. */
-export function zeichneTraeger(spannweite: number, hoehe: number): Zeichnung | undefined {
+/**
+ * Träger in der Ansicht: Spannweite und Querschnittshöhe, maßstäblich.
+ * art: Einfeldträger auf zwei Auflagern, End- oder Mittelfeld eines Mehrfeldträgers (Nachbarfelder mit
+ * Bruchlinie angedeutet) oder Kragarm (Kraglänge ab dem Auflager, Rückfeld angedeutet).
+ */
+export function zeichneTraeger(spannweite: number, hoehe: number, art: 'einfeld' | 'endfeld' | 'mittelfeld' | 'kragarm' = 'einfeld'): Zeichnung | undefined {
   if (!gueltig(spannweite, hoehe) || !(spannweite > 0) || !(hoehe > 0)) return undefined
-  // Auflager als Dreiecke unter den Trägerenden; ihre Größe ist nur Darstellung
+  // Auflager als Dreiecke unter dem Träger; ihre Größe ist nur Darstellung
   const a = Math.max(spannweite * 0.035, hoehe * 0.5)
-  const b = blatt([[-a, -a * 1.4], [spannweite + a, hoehe]], { l: 20, r: 44, o: 20, u: 36 })
+  // angedeutete Nachbarfelder: Länge nur Darstellung, mit Bruchlinie abgeschlossen
+  const nachbar = spannweite * (art === 'kragarm' ? 1.2 : 0.45)
+  const zack = Math.max(hoehe * 0.25, spannweite * 0.012)
+  const links = art === 'mittelfeld' || art === 'kragarm' ? -nachbar : -a * 0.6
+  const rechts = art === 'endfeld' || art === 'mittelfeld' ? spannweite + nachbar : art === 'kragarm' ? spannweite : spannweite + a * 0.6
+  const bruchLinks = art === 'mittelfeld' || art === 'kragarm'
+  const bruchRechts = art === 'endfeld' || art === 'mittelfeld'
+  const b = blatt([[links - (bruchLinks ? zack : a * 0.4), -a * 1.4], [rechts + (bruchRechts ? zack : a * 0.4), hoehe]], { l: 20, r: 44, o: 20, u: 36 })
   const auflager = (x: number): void => {
     b.zug([[x, 0], [x - a * 0.7, -a * 1.2], [x + a * 0.7, -a * 1.2]], 'fill="#fff" stroke="#111" stroke-width="0.8" stroke-linejoin="round"', true)
     b.zug([[x - a, -a * 1.2], [x + a, -a * 1.2]], LINIE)
   }
   auflager(0)
-  auflager(spannweite)
-  b.zug([[-a * 0.6, 0], [spannweite + a * 0.6, 0], [spannweite + a * 0.6, hoehe], [-a * 0.6, hoehe]], FLAECHE, true)
+  if (art !== 'kragarm') auflager(spannweite)
+  // Kragarm: zweites Auflager im angedeuteten Rückfeld
+  if (art === 'kragarm') auflager(-nachbar * 0.8)
+  // Trägerumriss; an angedeuteten Enden als gezackte Bruchlinie
+  const ende = (x: number, bruch: boolean, aufwaerts: boolean): Punkt[] => {
+    const p: Punkt[] = bruch ? [[x, 0], [x + zack, hoehe * 0.35], [x - zack, hoehe * 0.65], [x, hoehe]] : [[x, 0], [x, hoehe]]
+    return aufwaerts ? p : p.reverse()
+  }
+  b.zug([...ende(rechts, bruchRechts, true), ...ende(links, bruchLinks, false)], FLAECHE, true)
   b.kette([[0, -a * 1.2], [spannweite, -a * 1.2]], { h: b.kante.unten + KETTE_1 }, { feld: ['l'] })
-  b.kette([[spannweite + a * 0.6, 0], [spannweite + a * 0.6, hoehe]], { v: b.kante.rechts + KETTE_1 })
+  b.kette([[rechts, 0], [rechts, hoehe]], { v: b.kante.rechts + KETTE_1 })
   return b.fertig()
 }
 
