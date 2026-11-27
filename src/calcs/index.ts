@@ -4,8 +4,8 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneDachfenster, zeichneDreieck, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
-import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte } from './types'
+import { zeichneDachfenster, zeichneDreieck, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
 const W = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'ang', wichtig })
@@ -41,7 +41,7 @@ const laufListe = (was: string, m: { kante: number; achse: number; ferneKante: n
   zeilen: m.map((x, i) => [i + 1, x.kante, x.achse, x.ferneKante]),
 })
 
-const detail = (titel: string, z: ReturnType<typeof zeichneKerve>): { titel: string; zeichnung: NonNullable<typeof z> }[] => (z ? [{ titel, zeichnung: z }] : [])
+const detail = (titel: string, z: Zeichnung | undefined): { titel: string; zeichnung: Zeichnung }[] => (z ? [{ titel, zeichnung: z }] : [])
 
 export const GRUPPEN = ['Dach', 'Einteilung', 'Winkel & Maßkontrolle', 'Sonstiges', 'Dokumente']
 
@@ -136,6 +136,15 @@ export const RECHNER: Rechner[] = [
       })
       return {
         zeichnung: zeichneGrat(zahl(w, 'x'), r.grundmassWalm, s?.haupt.map((z) => z.abstand) ?? [], s?.walm.map((z) => z.abstand) ?? []),
+        details: [
+          ...detail('Detail 1: Seitenansicht mit wahrer Länge', zeichneGratSeite(r.gratGrund, r.hoehe, r.gratNeigung)),
+          ...(mitBreite
+            ? [
+                ...detail('Detail 2: Grundriss am Gratfuß mit Verstich', zeichneGratFuss(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), r.winkelHaupt, r.winkelWalm)),
+                ...detail('Detail 3: Querschnitt mit Abgratung, lotrecht geschnitten', zeichneGratQuerschnitt(zahl(w, 'b'), r.abgratungHaupt, r.abgratungWalm)),
+              ]
+            : []),
+        ],
         ausgaben: [
           L('Gratsparrenlänge', r.gratLaenge, true),
           W('Gratneigung', r.gratNeigung, true),

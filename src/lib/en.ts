@@ -658,4 +658,12 @@ export const EN: Record<string, string> = {
   'Schnellzugriff': 'Quick access',
   'Start': 'Home',
   'Favoriten und zuletzt benutzte Funktionen erscheinen hier.': 'Favourites and recently used functions appear here.',
+  // Details Grat
+  'Detail 1: Seitenansicht mit wahrer Länge': 'Detail 1: side view with true length',
+  'Detail 2: Grundriss am Gratfuß mit Verstich': 'Detail 2: plan at the hip foot with edge offset',
+  'Detail 3: Querschnitt mit Abgratung, lotrecht geschnitten': 'Detail 3: cross-section with backing, cut plumb',
+  Traufe: 'Eaves',
+  Anfallspunkt: 'Ridge end',
+  Walm: 'Hip end',
+  'Traufe Walm': 'Hip end eaves',
 }

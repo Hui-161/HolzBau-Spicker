@@ -95,6 +95,9 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   const text = await page.locator('.ergebnis').innerText()
   expect(text).toContain('692,8') // Gratlänge 400·√3
   expect(text).toContain('35,26') // Gratneigung
+  // Übersicht und drei Detailzeichnungen für die Anrisspunkte
+  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(4)
+  await expect(page.locator('.ergebnis h2').first()).toContainText('Detail 1')
   await page.goto('./#/dreieck')
   for (const [n, wert] of ['3', '4', '5'].entries()) await page.locator('form input').nth(n).fill(wert)
   await expect(page.locator('.ergebnis')).toContainText('90,00')

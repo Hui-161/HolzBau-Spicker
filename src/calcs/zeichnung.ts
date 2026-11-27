@@ -629,3 +629,95 @@ export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: n
   b.anPunkt([kSattel, 0], neigungGrad, 20, -7, { art: 'ang', klein: true })
   return b.fertig()
 }
+
+/** Seitenansicht des Grat- oder Kehlsparrens: Gratgrundmaß, Höhe, wahre Länge und Neigung. */
+export function zeichneGratSeite(gratGrund: number, hoehe: number, gratNeigung: number): Zeichnung | undefined {
+  if (!gueltig(gratGrund, hoehe, gratNeigung)) return undefined
+  const fuss: Punkt = [0, 0]
+  const spitze: Punkt = [gratGrund, hoehe]
+  const b = blatt([fuss, spitze, [gratGrund, 0]], { l: 20, r: 34, o: 30, u: 30 })
+  b.zug([fuss, [gratGrund, 0], spitze], HILF)
+  b.zug([fuss, spitze], DICK)
+  b.kette([fuss, [gratGrund, 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[gratGrund, 0], spitze], { v: b.kante.rechts + KETTE_1 })
+  b.kette([fuss, spitze], { p: KETTE_1 })
+  b.anPunkt([gratGrund * 0.55, 0], gratNeigung, 0, -8, { art: 'ang' })
+  b.mass({ ...ort(b, fuss, 4, 9), wert: 0, art: 'len', text: 'Traufe', klein: true, anker: 'start' })
+  b.mass({ ...ort(b, spitze, -9, 15), wert: 0, art: 'len', text: 'Anfallspunkt', klein: true, anker: 'end' })
+  return b.fertig()
+}
+
+const ort = (b: ReturnType<typeof blatt>, p: Punkt, dx: number, dy: number): { x: number; y: number } => {
+  const [x, y] = b.px(p)
+  return { x: x + dx, y: y + dy }
+}
+
+/**
+ * Querschnitt durch den Gratsparren, lotrecht geschnitten, Blick vom Fuß zum Anfallspunkt:
+ * links die Hauptdachseite, rechts die Walmseite. Der Sparren sitzt mittig auf der Gratlinie.
+ * Die Sparrenhöhe ist nicht bekannt, der untere Teil ist deshalb nur angedeutet.
+ */
+export function zeichneGratQuerschnitt(breite: number, abgratungHaupt: number, abgratungWalm: number): Zeichnung | undefined {
+  if (!gueltig(breite, abgratungHaupt, abgratungWalm) || !(breite > 0)) return undefined
+  const h2 = breite / 2
+  const tief = Math.max(abgratungHaupt, abgratungWalm)
+  const koerper = Math.max(breite * 0.9, tief * 1.6)
+  const profil: Punkt[] = [
+    [-h2, -koerper],
+    [-h2, -abgratungHaupt],
+    [0, 0],
+    [h2, -abgratungWalm],
+    [h2, -koerper],
+  ]
+  const b = blatt([...profil, [0, 0]], { l: 60, r: 60, o: 54, u: 22 })
+  b.zug(profil, 'fill="currentColor" fill-opacity="0.18" stroke="none"', true)
+  b.zug(profil, LINIE)
+  // unbearbeitete Oberkante als Bezug für die Abgratung
+  b.zug([[-h2, -abgratungHaupt], [-h2, 0], [h2, 0], [h2, -abgratungWalm]], HILF)
+  b.zug([[0, 0], [0, -koerper]], 'fill="none" stroke="currentColor" stroke-width="0.7" stroke-dasharray="6 2 1 2"')
+  b.kette([[-h2, 0], [0, 0], [h2, 0]], { h: b.kante.oben - KETTE_1 })
+  b.kette([[-h2, 0], [h2, 0]], { h: b.kante.oben - KETTE_2 })
+  b.kette([[-h2, -abgratungHaupt], [-h2, 0]], { v: b.kante.links - KETTE_1 })
+  b.kette([[h2, -abgratungWalm], [h2, 0]], { v: b.kante.rechts + KETTE_1 })
+  b.mass({ ...ort(b, [-h2, -koerper], -6, -4), wert: 0, art: 'len', text: 'Hauptdach', klein: true, anker: 'end' })
+  b.mass({ ...ort(b, [h2, -koerper], 6, -4), wert: 0, art: 'len', text: 'Walm', klein: true, anker: 'start' })
+  return b.fertig()
+}
+
+/**
+ * Grundriss am Gratfuß, vergrößert: Sparrenbreite, die beiden Traufen und der Verstich –
+ * das Maß in Gratrichtung, um das die Sparrenkante an der Traufe hinter der Ecke zurückliegt.
+ */
+export function zeichneGratFuss(grundHaupt: number, grundWalm: number, breite: number, winkelHaupt: number, winkelWalm: number): Zeichnung | undefined {
+  if (!gueltig(grundHaupt, grundWalm, breite, winkelHaupt, winkelWalm) || !(breite > 0)) return undefined
+  const g = Math.hypot(grundWalm, grundHaupt)
+  // u = Gratrichtung im Grundriss, n = quer dazu zur Hauptdachseite
+  const u: Punkt = [grundWalm / g, grundHaupt / g]
+  const n: Punkt = [grundHaupt / g, -grundWalm / g]
+  const h2 = breite / 2
+  const vH = (h2 * grundWalm) / grundHaupt
+  const vW = (h2 * grundHaupt) / grundWalm
+  const lang = Math.max(vH, vW) + breite * 1.6
+  const auf = (t: number, quer: number): Punkt => [u[0] * t + n[0] * quer, u[1] * t + n[1] * quer]
+  const eH = auf(vH, h2)
+  const eW = auf(vW, -h2)
+  const sparren: Punkt[] = [[0, 0], eH, auf(lang, h2), auf(lang, -h2), eW]
+  const weit = lang * 1.05
+  const b = blatt([[0, 0], [weit * u[0] + breite, 0], [0, weit * u[1] + breite], ...sparren], { l: 40, r: 30, o: 30, u: 36 })
+  b.zug([[weit * u[0] + breite, 0], [0, 0], [0, weit * u[1] + breite]], LINIE)
+  b.zug(sparren, FLAECHE, true)
+  b.zug([[0, 0], auf(lang * 1.05, 0)], 'fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="6 2 1 2"')
+  // Verstich je Seite: von der Ecke entlang der Achse bis auf Höhe des Punktes, an dem die Kante die Traufe trifft
+  b.zug([auf(vH, 0), eH], HILF)
+  b.zug([auf(vW, 0), eW], HILF)
+  const halbPx = Math.hypot(b.px(auf(0, h2))[0] - b.px([0, 0])[0], b.px(auf(0, h2))[1] - b.px([0, 0])[1])
+  b.kette([[0, 0], auf(vH, 0)], { p: -(halbPx + 13) }, { werte: [vH] })
+  b.kette([[0, 0], auf(vW, 0)], { p: halbPx + 13 }, { werte: [vW] })
+  // Sparrenbreite quer am Ende des Ausschnitts
+  b.kette([auf(lang, -h2), auf(lang, h2)], { p: 12 }, { werte: [breite] })
+  b.anPunkt([0, 0], winkelHaupt, 30, -5, { art: 'ang', klein: true })
+  b.anPunkt([0, 0], winkelWalm, 10, -32, { art: 'ang', klein: true })
+  b.mass({ ...ort(b, [weit * u[0] + breite, 0], 0, 9), wert: 0, art: 'len', text: 'Traufe Hauptdach', klein: true, anker: 'end' })
+  b.mass({ ...ort(b, [0, weit * u[1] + breite], -7, 2), wert: 0, art: 'len', text: 'Traufe Walm', klein: true, anker: 'end', drehung: -90 })
+  return b.fertig()
+}
