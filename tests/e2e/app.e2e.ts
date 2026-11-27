@@ -12,7 +12,7 @@ const BEISPIELE: Record<string, string[]> = {
   sattelgaube: ['45', '45', '200', '100', '40'],
   dachfenster: ['114', '118', '2', '4', '80', '8'],
   lattung: ['35', '600', '32', '4', '33', '36'],
-  dachflaeche: ['10', '8', '35', '0.5', '0.3'],
+  dachflaeche: ['1000', '800', '35', '50', '30'],
   neigung: ['30'],
   einteilung: ['300', '6', '62.5'],
   sparreneinteilung: ['1000', '8', '0', '80'],

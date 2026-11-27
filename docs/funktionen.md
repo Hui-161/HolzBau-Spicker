@@ -64,6 +64,8 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Zuschnitt: Teile, die länger als die längste Stange sind, wahlweise aus mehreren Stangen stoßen
 - Dreiecke: Es gelten immer die zuletzt eingetragenen zwei bzw. drei Werte; die übrigen Felder werden geleert und zeigen den berechneten Wert (`loese` in der Rechner-Definition)
 - Alle Rechner mit Zeichnung: eine Zeichnung oben statt Skizze, Feldliste darunter. Ohne Eingaben entsteht die Form aus Beispielwerten (`beispiel` in der Rechner-Definition, `src/lib/vorschau.ts`); gezeigt werden nur eingetragene Werte, leere Felder mit ihrem Namen, berechnete Maße erst mit dem Ergebnis
+- Dachfläche Satteldach: Eingaben in der gewählten Längeneinheit, Fläche in m²; Querschnitt und Grundriss als Zeichnung; wahlweise zweite Dachneigung mit außermittigem First
+- Gratsparren: Abgratungslinie (Kehle: Kehllinie) gestrichelt in Seitenansicht und Anfallspunkt, Gratlinie gestrichelt in den Ansichten der Seitenflächen (Hexenschnitt, Kerve)
 
 ## KI-Assistent (freiwillig)
 

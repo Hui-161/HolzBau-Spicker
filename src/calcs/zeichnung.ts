@@ -280,6 +280,8 @@ export interface SparrenBild {
   auflagerOben?: number
   /** Kennungen der Eingabefelder für antippbare Maße, falls sie vom Sparren-Rechner abweichen */
   feld?: { ue?: string; g?: string; mp?: string; a?: string; b?: string; uh?: string }
+  /** gestrichelte Bezugslinien parallel zur Oberkante, lotrecht um „tiefe“ darunter (Abgratungs- bzw. Kehllinie) */
+  bezugslinien?: number[]
   /** Schnitt an der Traufe als Winkel zur Oberkante (Hexenschnitt am Grat); ohne Angabe lotrecht */
   traufWinkel?: number
   /** Pultdach: Außenkante des oberen Auflagers – steht in der unteren Maßkette statt der Auflagerkante */
@@ -345,6 +347,7 @@ export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
     kreuz(b, p)
   }
   b.zug(sparren, FLAECHE, true)
+  for (const tiefe of e.bezugslinien ?? []) if (tiefe > 0 && tiefe < lot) b.zug([[tx, ty - tiefe], [grundmass, unten(grundmass) + lot - tiefe]], HILF)
   // unten die Grundmaße, rechts die Firsthöhe, am Sparren die Anrisslagen und die Gesamtlänge
   const fid = e.feld ?? { ue: 'ue', g: 'g', mp: 'mp', a: 'a' }
   const xs = [-ueberstand, 0, ...(e.mittelpfette ? [e.mittelpfette] : []), ...(xFirst !== undefined ? [xFirst] : []), grundmass].filter((x, i, a) => i === 0 || x - a[i - 1] > 1e-9)
@@ -408,7 +411,7 @@ export function zeichneTraufe(neigungGrad: number, sparrenhoehe: number, profil:
  * Firstpunkt vergrößert: Senkelschnitt in Firstmitte, mit Firstpfette auch deren Kerve.
  * Nullpunkt ist der Firstpunkt an der Oberkante.
  */
-export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: number, firstpfette = 0, lageFirst?: number, lageKerve?: number, gegensparren = true): Zeichnung | undefined {
+export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: number, firstpfette = 0, lageFirst?: number, lageKerve?: number, gegensparren = true, bezugslinien: number[] = []): Zeichnung | undefined {
   const rad = (neigungGrad * Math.PI) / 180
   if (!gueltig(rad, sparrenhoehe, kerve, firstpfette) || !(sparrenhoehe > kerve)) return undefined
   const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
@@ -445,6 +448,12 @@ export function zeichneFirst(neigungGrad: number, sparrenhoehe: number, kerve: n
   // Gegensparren nur angedeutet
   if (gegensparren) b.zug([[0, 0], [-xa * 0.45, xa * 0.45 * t]], HILF)
   b.zug(sparren, FLAECHE, true)
+  // Abgratungs- bzw. Kehllinie: parallel zur Oberkante, lotrecht darunter
+  for (const [i, tiefe] of bezugslinien.entries()) {
+    if (!(tiefe > 0 && tiefe < lot)) continue
+    b.zug([[xa, xa * t - tiefe], [0, -tiefe]], HILF)
+    if (i === 0) text(b, [xa * 0.55, xa * 0.55 * t - tiefe], 0, 8, 'Abgratungslinie', { drehung: -neigungGrad })
+  }
   // rechts der Firstschnitt, unten die Auflage, links Wange und Obholz an der Kerve
   b.kette([fussFirst, [0, 0]], { v: b.kante.rechts + KETTE_1 })
   if (firstpfette > 0) {
@@ -961,7 +970,7 @@ const text = (b: ReturnType<typeof blatt>, p: Punkt, dx: number, dy: number, t: 
  * vom Traufpunkt an der Oberkante schräg nach unten. Zum Vergleich der Senkelriss.
  * dickeLot = lotrechte Höhe der Seitenfläche; ohne Angabe ist die Sparrenhöhe nur angedeutet.
  */
-export function zeichneHexenschnitt(gratNeigung: number, hexe: number, dickeLot?: number): Zeichnung | undefined {
+export function zeichneHexenschnitt(gratNeigung: number, hexe: number, dickeLot?: number, abgratung = 0): Zeichnung | undefined {
   const g = (gratNeigung * Math.PI) / 180
   // Winkel der Schnittlinie unter der Waagerechten
   const d = ((hexe - gratNeigung) * Math.PI) / 180
@@ -977,9 +986,15 @@ export function zeichneHexenschnitt(gratNeigung: number, hexe: number, dickeLot?
   const flaeche_: Punkt[] = [[0, 0], fuss, [ende, unten(ende)], [ende, ende * Math.tan(g)]]
   // weggeschnittener Teil vor dem Schnitt, gestrichelt
   const vorn: Punkt[] = [[0, 0], [-dick * 0.5 * Math.cos(g), -dick * 0.5 * Math.sin(g)], [-dick * 0.5 * Math.cos(g), unten(-dick * 0.5 * Math.cos(g))], fuss]
-  const b = blatt([...flaeche_, ...vorn, [0, -dick]], { l: 56, r: 20, o: 30, u: 40 })
+  // Gratlinie: liegt um die Abgratung lotrecht über der Kante der Seitenfläche
+  const mitGrat = mitMass && abgratung > 0
+  const b = blatt([...flaeche_, ...vorn, [0, -dick], ...(mitGrat ? ([[ende, ende * Math.tan(g) + abgratung]] as Punkt[]) : [])], { l: 56, r: 20, o: 30, u: 40 })
   b.zug(vorn, HILF)
   b.zug(flaeche_, FLAECHE, true)
+  if (mitGrat) {
+    b.zug([[0, abgratung], [ende, ende * Math.tan(g) + abgratung]], HILF)
+    text(b, [ende * 0.62, ende * 0.62 * Math.tan(g) + abgratung], 0, -7, 'Gratlinie', { drehung: -gratNeigung })
+  }
   b.zug([[0, 0], fuss], DICK)
   // Senkelriss durch den Traufpunkt zum Vergleich
   b.zug([[0, 0], [0, unten(0)]], HILF)
@@ -1033,7 +1048,7 @@ export function zeichneGratAnfall(grundHaupt: number, grundWalm: number, breite:
  * Kerve an einer Seitenfläche des Gratsparrens, Blick auf die Fläche. Nullpunkt ist die Kervenecke
  * an dieser Fläche; der Senkel durch die Pfettenecke (Achse) liegt um den Verstich davor.
  */
-export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: number, sattel: number, obholz: number, lage?: number): Zeichnung | undefined {
+export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: number, sattel: number, obholz: number, lage?: number, abgratung = 0): Zeichnung | undefined {
   const g = (gratNeigung * Math.PI) / 180
   if (!gueltig(g, verstich, wange, sattel, obholz) || !(wange > 0) || !(obholz > 0)) return undefined
   const t = Math.tan(g)
@@ -1057,10 +1072,15 @@ export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: n
     [pf, -pf * 0.7],
     [0, -pf * 0.7],
   ]
-  const b = blatt([...flaeche_, ...pfette], { l: 46, r: 20, o: lage === undefined ? 16 : 66, u: 36 })
+  const b = blatt([...flaeche_, ...pfette, ...(abgratung > 0 ? ([[xb, unten(xb) + lot + abgratung]] as Punkt[]) : [])], { l: 46, r: 20, o: lage === undefined ? 16 : 66, u: 36 })
   b.zug(pfette, SCHNITT, true)
   kreuz(b, pfette)
   b.zug(flaeche_, FLAECHE, true)
+  // Gratlinie: um die Abgratung lotrecht über der Kante dieser Seitenfläche
+  if (abgratung > 0) {
+    b.zug([[xa, unten(xa) + lot + abgratung], [xb, unten(xb) + lot + abgratung]], HILF)
+    text(b, [xb * 0.7, unten(xb * 0.7) + lot + abgratung], 0, -7, 'Gratlinie', { drehung: -gratNeigung })
+  }
   const oben: Punkt = [0, unten(0) + lot]
   b.zug([[0, 0], oben], HILF)
   // Senkel durch die Pfettenecke auf der Gratachse
@@ -1348,5 +1368,54 @@ export function zeichneBogen(sehne: number, stich: number, gegeben: string[], ra
   b.kette([[0, 0], [s_, 0]], { h: b.kante.unten + KETTE_1 }, { werte: [sehne], vor: ['s = '], feld: ['s'], berechnet: [offen('s')] })
   b.kette([[s_, 0], [s_, h]], { v: b.kante.rechts + KETTE_1 }, { werte: [stich], vor: ['h = '], feld: ['h'], berechnet: [offen('h')] })
   if (radius !== undefined) b.mass({ ...ort(b, [s_ / 2, h], 0, -12), wert: radius, art: 'len', name: 'Radius' })
+  return b.fertig()
+}
+
+/**
+ * Querschnitt des Satteldachs: Gebäudebreite unten, First über der Stelle, an der sich beide
+ * Dachseiten treffen (bei ungleichen Neigungen außermittig), Überstände an beiden Traufen.
+ */
+export function zeichneSatteldach(breite: number, firstAb: number, firsthoehe: number, ueberstand: number, neigung1: number, neigung2: number, sparren1: number, sparren2: number): Zeichnung | undefined {
+  if (!gueltig(breite, firstAb, firsthoehe, ueberstand, neigung1, neigung2) || !(breite > 0) || !(firsthoehe > 0)) return undefined
+  const [t1, t2] = [Math.tan((neigung1 * Math.PI) / 180), Math.tan((neigung2 * Math.PI) / 180)]
+  const first: Punkt = [firstAb, firsthoehe]
+  const links: Punkt = [-ueberstand, -ueberstand * t1]
+  const rechts: Punkt = [breite + ueberstand, -ueberstand * t2]
+  const gleich = Math.abs(neigung1 - neigung2) < 1e-9
+  // Gebäude nur angedeutet: Traufhöhe als Bezugslinie, Wände darunter
+  const wand = Math.max(firsthoehe * 0.35, breite * 0.08)
+  const b = blatt([links, first, rechts, [0, -wand], [breite, 0]], { l: 30, r: 40, o: 40, u: 38 })
+  b.zug([[0, 0], [0, -wand]], HILF)
+  b.zug([[breite, 0], [breite, -wand]], HILF)
+  b.zug([[0, 0], [breite, 0]], HILF)
+  b.zug([first, [firstAb, 0]], HILF)
+  b.zug([links, first, rechts], DICK)
+  const unten: Punkt[] = gleich ? [[-ueberstand, 0], [0, 0], [breite, 0], [breite + ueberstand, 0]] : [[-ueberstand, 0], [0, 0], [firstAb, 0], [breite, 0], [breite + ueberstand, 0]]
+  b.kette(unten.filter((p, i, a) => i === 0 || p[0] - a[i - 1][0] > 1e-9), { h: b.kante.unten + KETTE_1 }, { feld: ueberstand > 0 ? (gleich ? ['ut', 'b', undefined] : ['ut']) : gleich ? ['b'] : [] })
+  b.kette([[breite + ueberstand, 0], [breite + ueberstand, firsthoehe]], { v: b.kante.rechts + KETTE_1 }, { kurz: true })
+  b.kette([links, first], { p: 14 }, { werte: [sparren1] })
+  if (!gleich) b.kette([first, rechts], { p: 14 }, { werte: [sparren2] })
+  // Neigungen im Dreieck über der Traufhöhe
+  const winkel = (x: number, n: number, feld: string, anker: 'start' | 'end'): void => b.anPunkt([x, 0], n, anker === 'start' ? 22 : -22, -7, { art: 'ang', klein: true, feld, anker })
+  winkel(0, neigung1, 'a', 'start')
+  winkel(breite, neigung2, gleich ? 'a' : 'a2', 'end')
+  return b.fertig()
+}
+
+/** Grundriss des Satteldachs mit Überständen: Trauflänge unten, Breite links, First als Achse. */
+export function zeichneDachGrundriss(laenge: number, breite: number, ueberstandTraufe: number, ueberstandOrtgang: number, firstAb: number): Zeichnung | undefined {
+  if (!gueltig(laenge, breite, ueberstandTraufe, ueberstandOrtgang, firstAb) || !(laenge > 0) || !(breite > 0)) return undefined
+  const [ut, uo] = [ueberstandTraufe, ueberstandOrtgang]
+  const dach: Punkt[] = [[-uo, -ut], [laenge + uo, -ut], [laenge + uo, breite + ut], [-uo, breite + ut]]
+  const haus: Punkt[] = [[0, 0], [laenge, 0], [laenge, breite], [0, breite]]
+  const b = blatt(dach, { l: 40, r: 16, o: 16, u: 38 })
+  b.zug(dach, FLAECHE, true)
+  b.zug(haus, HILF, true)
+  b.zug([[-uo, firstAb], [laenge + uo, firstAb]], ACHSE)
+  text(b, [laenge / 2, firstAb], 0, -7, 'First')
+  const fx = (ps: Punkt[]): Punkt[] => ps.filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1e-9)
+  // jeden Überstand nur einmal bemaßen – unten links und links oben –, damit sich die Maße an den Ecken nicht treffen
+  b.kette(fx([[-uo, -ut], [0, -ut], [laenge, -ut]]), { h: b.kante.unten + KETTE_1 }, { feld: uo > 0 ? ['uo', 'l'] : ['l'] })
+  b.kette(fx([[-uo, 0], [-uo, breite], [-uo, breite + ut]]), { v: b.kante.links - KETTE_1 }, { feld: ['b', ut > 0 ? 'ut' : undefined] })
   return b.fertig()
 }

@@ -326,21 +326,38 @@ export interface DachflaecheEingabe {
   laenge: number
   breite: number
   neigung: number
+  /** Neigung der zweiten Dachseite; ohne Angabe gleich der ersten */
+  neigung2?: number
   ueberstandTraufe: number
   ueberstandOrtgang: number
 }
 
+/**
+ * Satteldach über rechteckigem Grundriss, beide Traufen auf gleicher Höhe. Bei ungleichen Neigungen
+ * liegt der First außermittig: dort, wo beide Dachseiten dieselbe Höhe erreichen.
+ */
 export function dachflaecheSattel(e: DachflaecheEingabe) {
   pruefeNeigung(e.neigung)
+  const neigung2 = e.neigung2 ?? e.neigung
+  pruefeNeigung(neigung2, 'Dachneigung zweite Seite')
   pruefe(e.laenge > 0 && e.breite > 0, 'Länge und Breite müssen größer als 0 sein.')
-  const sparren = (e.breite / 2 + e.ueberstandTraufe) / cos(e.neigung)
+  pruefe(e.ueberstandTraufe >= 0 && e.ueberstandOrtgang >= 0, 'Dachüberstand darf nicht negativ sein.')
+  const [t1, t2] = [tan(e.neigung), tan(neigung2)]
+  // waagerecht von der Traufwand der ersten Seite bis unter den First
+  const firstAb = (e.breite * t2) / (t1 + t2)
+  const sparren = (firstAb + e.ueberstandTraufe) / cos(e.neigung)
+  const sparren2 = (e.breite - firstAb + e.ueberstandTraufe) / cos(neigung2)
   const traufe = e.laenge + 2 * e.ueberstandOrtgang
   return {
     sparrenlaenge: sparren,
+    sparrenlaenge2: sparren2,
     trauflaenge: traufe,
     flaecheSeite: sparren * traufe,
-    flaeche: 2 * sparren * traufe,
-    firsthoehe: (e.breite / 2) * tan(e.neigung),
+    flaecheSeite2: sparren2 * traufe,
+    flaeche: (sparren + sparren2) * traufe,
+    firsthoehe: firstAb * t1,
+    firstAb,
+    neigung2,
   }
 }
 

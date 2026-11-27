@@ -81,6 +81,21 @@ describe('Dachfläche und Neigung', () => {
     nah(r.sparrenlaenge, 4.5 * Math.SQRT2)
     nah(r.flaeche, 2 * 4.5 * Math.SQRT2 * 10.6)
   })
+  it('Satteldach mit ungleichen Neigungen: First dort, wo beide Seiten gleich hoch sind', () => {
+    const r = dachflaecheSattel({ laenge: 10, breite: 8, neigung: 30, neigung2: 50, ueberstandTraufe: 0.5, ueberstandOrtgang: 0 })
+    const rad = (g: number) => (g * Math.PI) / 180
+    // gleiche Höhe von beiden Traufwänden aus
+    nah(r.firstAb * Math.tan(rad(30)), (8 - r.firstAb) * Math.tan(rad(50)))
+    nah(r.firsthoehe, r.firstAb * Math.tan(rad(30)))
+    // Sparrenlängen als Strecke Traufpunkt – First
+    nah(r.sparrenlaenge, Math.hypot(r.firstAb + 0.5, (r.firstAb + 0.5) * Math.tan(rad(30))))
+    nah(r.sparrenlaenge2, Math.hypot(8 - r.firstAb + 0.5, (8 - r.firstAb + 0.5) * Math.tan(rad(50))))
+    nah(r.flaeche, (r.sparrenlaenge + r.sparrenlaenge2) * 10)
+    // gleiche Neigungen: First mittig, beide Seiten gleich
+    const g = dachflaecheSattel({ laenge: 10, breite: 8, neigung: 35, neigung2: 35, ueberstandTraufe: 0, ueberstandOrtgang: 0 })
+    nah(g.firstAb, 4)
+    nah(g.sparrenlaenge, g.sparrenlaenge2)
+  })
   it('Neigungsumrechnung ist in sich stimmig', () => {
     nah(neigungAusGrad(45).prozent, 100)
     nah(neigungAusProzent(100).grad, 45)

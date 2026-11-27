@@ -4,7 +4,7 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
+import { zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -174,7 +174,7 @@ export const RECHNER: Rechner[] = [
     titel: 'Grat- und Kehlsparren',
     gruppe: 'Dach',
     kurz: 'Gratlänge, Gratneigung, Abgratung',
-    info: 'Gilt für Grat und Kehle, auch bei ungleichen Dachneigungen. Die Abgratung ist lotrecht gemessen. Die Gratverschiebung ist ein Grundrissmaß quer zur Gratlinie. Der Verstich ist ein Grundrissmaß in Gratrichtung: der Versatz der Sparrenkante gegenüber der Achse an der Traufe. Der Hexenschnitt wird an der Seitenfläche zur Gratoberkante angerissen. Am Anfallspunkt endet der Grat mit zwei lotrechten Backen, die sich auf der Achse treffen; gerechnet ist bis zum Anfallspunkt, halbe Holzstärken der anschließenden Hölzer selbst abziehen. Die Kerve bezieht sich auf die Außenecke der Fußpfetten: An jeder Seitenfläche sitzt ihr Senkelriss um den Verstich weiter innen, das Obholz gilt dort ab der abgegrateten Kante. Aufbau wie beim Sparren: Das Grundmaß zählt ab Außenkante Fußpfette, der Dachüberstand kommt davor; alle Lagen der Anrissliste gelten entlang der Kante ab dem Senkel durch den Traufpunkt. Die Seitenansicht zeigt den Schnitt in der Gratachse. Hexenschnitt, Kerve und Anfallspunkt gelten für den Grat, nicht für die Kehle. Die Schifterliste gilt für den Grat: Länge der Schifterachse in der Dachfläche ab Traufe, ohne Überstand. Die Lage ist immer ab Gratfuß angegeben, auch wenn das Raster am Anfallspunkt beginnt.',
+    info: 'Gilt für Grat und Kehle, auch bei ungleichen Dachneigungen. Die Abgratung ist lotrecht gemessen. Die Gratverschiebung ist ein Grundrissmaß quer zur Gratlinie. Der Verstich ist ein Grundrissmaß in Gratrichtung: der Versatz der Sparrenkante gegenüber der Achse an der Traufe. Der Hexenschnitt wird an der Seitenfläche zur Gratoberkante angerissen. Am Anfallspunkt endet der Grat mit zwei lotrechten Backen, die sich auf der Achse treffen; gerechnet ist bis zum Anfallspunkt, halbe Holzstärken der anschließenden Hölzer selbst abziehen. Die Kerve bezieht sich auf die Außenecke der Fußpfetten: An jeder Seitenfläche sitzt ihr Senkelriss um den Verstich weiter innen, das Obholz gilt dort ab der abgegrateten Kante. Aufbau wie beim Sparren: Das Grundmaß zählt ab Außenkante Fußpfette, der Dachüberstand kommt davor; alle Lagen der Anrissliste gelten entlang der Kante ab dem Senkel durch den Traufpunkt. Die Seitenansicht zeigt den Schnitt in der Gratachse. Gestrichelt ist die Abgratungslinie eingezeichnet: die Kante der Seitenfläche nach dem Abgraten, bei der Kehle entsprechend die Kehllinie. In den Ansichten der Seitenflächen liegt die Gratlinie gestrichelt darüber. Hexenschnitt, Kerve und Anfallspunkt gelten für den Grat, nicht für die Kehle. Die Schifterliste gilt für den Grat: Länge der Schifterachse in der Dachfläche ab Traufe, ohne Überstand. Die Lage ist immer ab Gratfuß angegeben, auch wenn das Raster am Anfallspunkt beginnt.',
     skizze: `<path ${S} d="M20 100 H200 V25"/><path ${S} d="M200 100 L110 25 H200"/><path ${D} d="M110 25 V100"/><text ${T} text-anchor="end" x="200" y="16">Grundmaß Walm</text><text ${T} x="20" y="66">Grundmaß HD</text><text ${T} x="160" y="52">Grat</text><text ${T} x="20" y="115">Traufe Hauptdach</text>`,
     felder: [
       { id: 'ah', label: 'Neigung Hauptdach', art: 'ang', vorgabe: 35 },
@@ -222,7 +222,7 @@ export const RECHNER: Rechner[] = [
       return {
         // Seitenansicht wie beim Sparren: Schnitt in der Gratachse mit Traufschnitt, Kerve über der Pfettenecke und Anfallspunkt.
         // Ohne Sparrenhöhe ist die Holzstärke nur angedeutet.
-        zeichnung: zeichneSparren({ grundmass: r.gratGrund, ueberstand: anr.ueGrund, neigung: r.gratNeigung, sparrenhoehe: hg ?? r.gratGrund * 0.035, kerve: anr.kerve?.tiefeAchse ?? 0, traufWinkel: r.hexeHaupt, feld: {} }),
+        zeichnung: zeichneSparren({ grundmass: r.gratGrund, ueberstand: anr.ueGrund, neigung: r.gratNeigung, sparrenhoehe: hg ?? r.gratGrund * 0.035, kerve: anr.kerve?.tiefeAchse ?? 0, traufWinkel: r.hexeHaupt, feld: {}, bezugslinien: hg && mitBreite ? [...new Set([r.abgratungHaupt, r.abgratungWalm])] : [] }),
         details: [
           ...detail('Detail Grundriss mit Schiftern', zeichneGrat(zahl(w, 'x'), r.grundmassWalm, s?.haupt.map((z) => z.abstand) ?? [], s?.walm.map((z) => z.abstand) ?? [])),
           ...(mitBreite
@@ -232,19 +232,19 @@ export const RECHNER: Rechner[] = [
               ]
             : []),
           ...(hexeGleich
-            ? detail('Detail Hexenschnitt am Fuß, beide Seiten gleich', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined))
+            ? detail('Detail Hexenschnitt am Fuß, beide Seiten gleich', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined, r.abgratungHaupt))
             : [
-                ...detail('Detail Hexenschnitt am Fuß, Hauptdachseite', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined)),
-                ...detail('Detail Hexenschnitt am Fuß, Walmseite', zeichneHexenschnitt(r.gratNeigung, r.hexeWalm, lotGrat ? lotGrat - r.abgratungWalm : undefined)),
+                ...detail('Detail Hexenschnitt am Fuß, Hauptdachseite', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined, r.abgratungHaupt)),
+                ...detail('Detail Hexenschnitt am Fuß, Walmseite', zeichneHexenschnitt(r.gratNeigung, r.hexeWalm, lotGrat ? lotGrat - r.abgratungWalm : undefined, r.abgratungWalm)),
               ]),
           ...(kerve && anr.kerve
             ? [
-                ...detail('Detail Kerve, Ansicht der Hauptdachseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.haupt.verstich, kerve.haupt.wange, kerve.haupt.sattel, ob as number, anr.kerve.haupt)),
-                ...detail('Detail Kerve, Ansicht der Walmseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.walm.verstich, kerve.walm.wange, kerve.walm.sattel, ob as number, anr.kerve.walm)),
+                ...detail('Detail Kerve, Ansicht der Hauptdachseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.haupt.verstich, kerve.haupt.wange, kerve.haupt.sattel, ob as number, anr.kerve.haupt, r.abgratungHaupt)),
+                ...detail('Detail Kerve, Ansicht der Walmseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.walm.verstich, kerve.walm.wange, kerve.walm.sattel, ob as number, anr.kerve.walm, r.abgratungWalm)),
               ]
             : []),
           ...(an ? detail('Detail Anfallspunkt: Grundriss mit den Backen', zeichneGratAnfall(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), an.planHaupt, an.planWalm)) : []),
-          ...(hg ? detail('Detail Anfallspunkt: Seitenansicht mit Senkelschnitt', zeichneFirst(r.gratNeigung, hg, 0, 0, anr.anfallAchse, undefined, false)) : []),
+          ...(hg ? detail('Detail Anfallspunkt: Seitenansicht mit Senkelschnitt', zeichneFirst(r.gratNeigung, hg, 0, 0, anr.anfallAchse, undefined, false, mitBreite ? [...new Set([r.abgratungHaupt, r.abgratungWalm])] : [])) : []),
         ],
         ausgaben: [
           L(ue > 0 ? 'Gratsparrenlänge gesamt' : 'Gratsparrenlänge', anr.laengeGesamt, true),
@@ -684,26 +684,39 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'dachflaeche',
+    beispiel: { l: 1000, b: 800, a: 35, ut: 50, uo: 30 },
     titel: 'Dachfläche Satteldach',
     gruppe: 'Dach',
     kurz: 'Fläche aus Grundriss und Neigung',
+    info: 'Längen in der gewählten Einheit, die Fläche in Quadratmetern. Beide Traufen liegen auf gleicher Höhe. Mit einer zweiten Dachneigung liegt der First außermittig: dort, wo beide Seiten dieselbe Höhe erreichen.',
     felder: [
-      { id: 'l', label: 'Gebäudelänge (Traufseite)', art: 'num', einheit: 'm' },
-      { id: 'b', label: 'Gebäudebreite (Giebelseite)', art: 'num', einheit: 'm' },
+      { id: 'l', label: 'Gebäudelänge (Traufseite)', art: 'len' },
+      { id: 'b', label: 'Gebäudebreite (Giebelseite)', art: 'len' },
       { id: 'a', label: 'Dachneigung', art: 'ang', vorgabe: 35 },
-      { id: 'ut', label: 'Überstand Traufe (waagerecht)', art: 'num', einheit: 'm', vorgabe: 0 },
-      { id: 'uo', label: 'Überstand Ortgang', art: 'num', einheit: 'm', vorgabe: 0 },
+      { id: 'ut', label: 'Überstand Traufe (waagerecht)', art: 'len', vorgabe: 0 },
+      { id: 'uo', label: 'Überstand Ortgang', art: 'len', vorgabe: 0 },
+      { id: 'a2', label: 'Dachneigung zweite Seite', art: 'ang', optional: true, hinweis: 'leer = beide Seiten gleich' },
     ],
-    rechne: (w) => {
-      const r = dachflaecheSattel({ laenge: zahl(w, 'l'), breite: zahl(w, 'b'), neigung: zahl(w, 'a'), ueberstandTraufe: zahl(w, 'ut'), ueberstandOrtgang: zahl(w, 'uo') })
-      const m = (label: string, wert: number, einheit: string, wichtig = false): Ausgabe => ({ label, wert, art: 'num', einheit, wichtig, stellen: 2 })
+    rechne: (w, k) => {
+      const r = dachflaecheSattel({ laenge: zahl(w, 'l'), breite: zahl(w, 'b'), neigung: zahl(w, 'a'), neigung2: opt(w, 'a2'), ueberstandTraufe: zahl(w, 'ut'), ueberstandOrtgang: zahl(w, 'uo') })
+      const gleich = Math.abs(r.neigung2 - zahl(w, 'a')) < 1e-9
+      const m2 = (label: string, laenge: number, breite: number, wichtig = false): Ausgabe => ({ label, wert: qm(laenge, breite, k.jeCm), art: 'num', einheit: 'm²', wichtig, stellen: 2 })
       return {
+        zeichnung: zeichneSatteldach(zahl(w, 'b'), r.firstAb, r.firsthoehe, zahl(w, 'ut'), zahl(w, 'a'), r.neigung2, r.sparrenlaenge, r.sparrenlaenge2),
+        details: detail('Detail Grundriss mit Überständen', zeichneDachGrundriss(zahl(w, 'l'), zahl(w, 'b'), zahl(w, 'ut'), zahl(w, 'uo'), r.firstAb)),
         ausgaben: [
-          m('Dachfläche gesamt', r.flaeche, 'm²', true),
-          m('je Dachseite', r.flaecheSeite, 'm²'),
-          m('Sparrenlänge', r.sparrenlaenge, 'm'),
-          m('Trauflänge', r.trauflaenge, 'm'),
-          m('Firsthöhe', r.firsthoehe, 'm'),
+          m2('Dachfläche gesamt', r.sparrenlaenge + r.sparrenlaenge2, r.trauflaenge, true),
+          ...(gleich
+            ? [m2('je Dachseite', r.sparrenlaenge, r.trauflaenge), L('Sparrenlänge', r.sparrenlaenge)]
+            : [
+                m2('Dachseite 1', r.sparrenlaenge, r.trauflaenge),
+                m2('Dachseite 2', r.sparrenlaenge2, r.trauflaenge),
+                L('Sparrenlänge Seite 1', r.sparrenlaenge),
+                L('Sparrenlänge Seite 2', r.sparrenlaenge2),
+                L('First ab Traufwand Seite 1 (waagerecht)', r.firstAb),
+              ]),
+          L('Trauflänge', r.trauflaenge),
+          L('Firsthöhe', r.firsthoehe),
         ],
       }
     },
