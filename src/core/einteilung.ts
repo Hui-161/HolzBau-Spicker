@@ -63,3 +63,13 @@ export function sparrenEinteilung(e: SparrenEinteilungEingabe) {
     sparren,
   }
 }
+
+/**
+ * Fortlaufende Maße zum Antragen vom Bandmaß: Das Band bleibt am Anfang eingehängt, jedes Maß
+ * zählt ab dort. Von rechts gemessen ist die „nahe Kante“ die rechte Kante des Stabes.
+ * Ergebnis in der Reihenfolge ab dem Anfang des Bandes.
+ */
+export function laufmasse(linkeKanten: number[], staerke: number, gesamt: number, von: 'links' | 'rechts') {
+  const stab = linkeKanten.map((k) => (von === 'links' ? { kante: k, achse: k + staerke / 2, ferneKante: k + staerke } : { kante: gesamt - k - staerke, achse: gesamt - k - staerke / 2, ferneKante: gesamt - k }))
+  return stab.sort((a, b) => a.kante - b.kante)
+}

@@ -341,3 +341,35 @@ test('Stammdaten und Projektdaten werden in den Vorlagen vorbelegt', async ({ pa
   await expect(page.locator('form > label textarea').nth(1)).toHaveValue('')
   await expect(page.locator('form > label input[type=text]').nth(0)).toHaveValue('')
 })
+
+test('Menüleiste springt zwischen Funktionen, Laufmaß wechselt die Seite', async ({ page }) => {
+  await mitSprache(page, 'de')
+  await page.goto('./#/sparren')
+  await page.goto('./#/sparreneinteilung')
+  const menue = page.locator('nav.menue')
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
+  // die Reihenfolge bleibt beim Springen stehen
+  await menue.getByRole('link', { name: 'Sparren', exact: true }).click()
+  await expect(page.locator('h1')).toHaveText('Sparren')
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
+  await menue.getByRole('link', { name: 'Start' }).click()
+  await expect(page.locator('h1')).toHaveText('Holzbau-Spicker')
+
+  // fortlaufende Maße: von links beginnt der erste Sparren bei 0, von rechts ebenso (symmetrisch) …
+  await menue.getByRole('link', { name: 'Sparreneinteilung' }).click()
+  for (const [n, wert] of ['1000', '8', '20', '80'].entries()) await page.locator('form input').nth(n).fill(wert)
+  const ersteZeile = page.locator('.ergebnis tbody tr').first()
+  await expect(ersteZeile).toContainText('20,0')
+  await expect(page.locator('.ergebnis h2')).toContainText('von links')
+  await page.locator('select').last().selectOption('rechts')
+  await expect(page.locator('.ergebnis h2')).toContainText('von rechts')
+  await expect(ersteZeile).toContainText('20,0')
+  // … beim Eckmaß sitzt der Stab am rechten Ende: von rechts bei 0, von links nicht
+  await page.goto('./#/einteilung')
+  for (const [n, wert] of ['300', '6', '62.5'].entries()) await page.locator('form input').nth(n).fill(wert)
+  await page.locator('select').nth(0).selectOption('ecke')
+  await page.locator('select').last().selectOption('rechts')
+  await expect(page.locator('.ergebnis tbody tr').first().locator('td').nth(1)).toHaveText('0,0')
+  await page.locator('select').last().selectOption('links')
+  await expect(page.locator('.ergebnis tbody tr').first().locator('td').nth(1)).toHaveText('54,0')
+})

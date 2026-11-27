@@ -55,6 +55,8 @@ export interface Mass {
   vor?: string
   /** Bezeichnung, wird übersetzt (z. B. „Achsmaß“) */
   name?: string
+  /** Beschriftung statt einer Zahl, wird übersetzt (z. B. „Fußpfette“) */
+  text?: string
   /** deckend hinterlegen, wenn die Zahl über Linien liegt */
   hinterlegt?: boolean
   /** kleinere Schrift für Nummern */
@@ -73,6 +75,8 @@ export interface Ergebnis {
   ausgaben: Ausgabe[]
   /** maßstäbliche Zeichnung zum Ergebnis */
   zeichnung?: Zeichnung
+  /** weitere Zeichnungen, z. B. vergrößerte Details */
+  details?: { titel: string; zeichnung: Zeichnung }[]
   liste?: Liste
   /** weitere Listen unter der ersten */
   listen?: Liste[]

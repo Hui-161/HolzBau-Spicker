@@ -164,6 +164,27 @@ function blatt(punkte: Punkt[], rand: Rand) {
         masse.push({ x: ort[0], y: ort[1], wert, art: 'len', drehung: Math.abs(drehung) < 0.01 ? undefined : drehung, anker, vor })
       }
     },
+    /**
+     * Fortlaufende Bemaßung auf einer waagerechten Linie: Nullpunkt mit Kreis, an jedem Punkt
+     * das Maß ab Null, quer zur Linie geschrieben – zum Antragen vom eingehängten Bandmaß.
+     */
+    laufkette: (ps: Punkt[], hoehe: number, werte: number[]): void => {
+      const xs_ = ps.map((p) => px(p)[0])
+      if (xs_.length < 2) return
+      const [anfang, ende] = [xs_[0], xs_[xs_.length - 1]]
+      const r = anfang <= ende ? 1 : -1
+      teile.push(pfad([[anfang, hoehe], [ende + 3 * r, hoehe]], MASS))
+      teile.push(`<circle cx="${f1(anfang)}" cy="${f1(hoehe)}" r="2.6" fill="none" style="stroke:var(--text,#000)" stroke-width="1.2"/>`)
+      // bei dichter Folge nur jedes k-te Maß beschriften, die Striche bleiben alle
+      const dichte = Math.abs(ende - anfang) / (xs_.length - 1)
+      const schritt = Math.max(1, Math.ceil(10 / (dichte || 10)))
+      xs_.forEach((x, i) => {
+        ps[i] && teile.push(pfad([[x, px(ps[i])[1] + 2.5], [x, hoehe + 3]], MASS))
+        if (i > 0) teile.push(pfad([[x - 2.6, hoehe + 2.6], [x + 2.6, hoehe - 2.6]], STRICH))
+        // der Nullpunkt trägt nur den Kreis: eine „0“ würde das erste Maß überdecken
+        if (i > 0 && (i % schritt === 0 || i === xs_.length - 1)) masse.push({ x, y: hoehe + 6, wert: werte[i], art: 'len', drehung: -90, anker: 'end' })
+      })
+    },
     fertig: (): Zeichnung => ({ breite: BREITE, hoehe: blattHoehe, inhalt: teile.join(''), masse }),
   }
   return b
@@ -298,16 +319,19 @@ export function zeichneGrat(grundHaupt: number, grundWalm: number, schifterHaupt
   return b.fertig()
 }
 
-/** Stäbe auf einer Strecke, von oben gesehen. */
-export function zeichneEinteilung(breite: number, staerke: number, kanten: number[]): Zeichnung | undefined {
+/**
+ * Stäbe auf einer Strecke, von oben gesehen. Oben die Kette am ersten Feld (Stab, lichtes Maß,
+ * Achsmaß), unten die fortlaufenden Achsmaße ab dem gewählten Ende und das Gesamtmaß.
+ */
+export function zeichneEinteilung(breite: number, staerke: number, kanten: number[], von: 'links' | 'rechts' = 'links'): Zeichnung | undefined {
   if (!gueltig(breite, staerke) || kanten.length > 80) return undefined
-  const tiefe = breite * 0.16
+  const tiefe = breite * 0.14
   const b = blatt(
     [
       [0, 0],
       [breite, tiefe],
     ],
-    { l: 34, r: 16, o: 46, u: 30 }
+    { l: 34, r: 34, o: 46, u: 78 }
   )
   b.zug(
     [
@@ -330,14 +354,21 @@ export function zeichneEinteilung(breite: number, staerke: number, kanten: numbe
       FLAECHE,
       true
     )
+    // Achse jedes Stabes
+    b.zug([[k + staerke / 2, -tiefe * 0.12], [k + staerke / 2, tiefe * 1.12]], 'fill="none" stroke="currentColor" stroke-width="0.7" stroke-dasharray="6 2 1 2"')
   }
-  b.kette([[0, 0], [breite, 0]], { h: b.kante.unten + KETTE_1 })
   if (kanten.length >= 2) {
-    const [a, e] = kanten
-    // am ersten Feld: Stab und lichtes Maß, darüber das Achsmaß
-    b.kette([[a, tiefe], [a + staerke, tiefe], [e, tiefe]], { h: b.kante.oben - KETTE_1 })
-    b.kette([[a, tiefe], [e, tiefe]], { h: b.kante.oben - KETTE_2 })
+    // Kette am ersten Feld auf der Seite, von der gemessen wird
+    const sortiert = [...kanten].sort((x, y) => x - y)
+    const [a, e] = von === 'links' ? [sortiert[0], sortiert[1]] : [sortiert[sortiert.length - 2], sortiert[sortiert.length - 1]]
+    b.kette([[a, tiefe], [a + staerke, tiefe], [e, tiefe], [e + staerke, tiefe]], { h: b.kante.oben - KETTE_1 })
+    b.kette([[a + staerke / 2, tiefe], [e + staerke / 2, tiefe]], { h: b.kante.oben - KETTE_2 })
   }
+  // fortlaufend: Null am gewählten Ende, dann jede Achse
+  const null_ = von === 'links' ? 0 : breite
+  const achsen = kanten.map((k) => k + staerke / 2).sort((x, y) => (von === 'links' ? x - y : y - x))
+  b.laufkette([[null_, 0], ...achsen.map((x): Punkt => [x, 0])], b.kante.unten + 12, [0, ...achsen.map((x) => Math.abs(x - null_))])
+  b.kette([[0, 0], [breite, 0]], { h: b.kante.unten + 66 })
   return b.fertig()
 }
 
@@ -544,5 +575,57 @@ export function zeichneDachfenster(
   b.kette([[s, oben], [s + wechsellaenge, oben]], { h: b.kante.oben - KETTE_2 })
   const rechts = wechsellaenge + 2 * s
   b.kette([[rechts, 0], [rechts, fy], [rechts, fy + fensterhoehe], [rechts, wechselabstand]], { v: b.kante.rechts + KETTE_1 })
+  return b.fertig()
+}
+
+/**
+ * Vergrößertes Detail der Kerve: Sattel, Wange, Obholz, Kerventiefe und Sparrenhöhe.
+ * Die Fußpfette ist nur angedeutet, ihre Maße sind nicht bekannt.
+ */
+export function zeichneKerve(neigungGrad: number, sparrenhoehe: number, kerve: number): Zeichnung | undefined {
+  const rad = (neigungGrad * Math.PI) / 180
+  if (!gueltig(rad, sparrenhoehe, kerve) || !(kerve > 0) || !(sparrenhoehe > kerve)) return undefined
+  const [sin, cos, t] = [Math.sin(rad), Math.cos(rad), Math.tan(rad)]
+  const lot = sparrenhoehe / cos
+  const kLot = kerve / cos
+  const kSattel = kerve / sin
+  const unten = (x: number): number => x * t - kLot
+  // Ausschnitt um die Kervenecke
+  const xa = -1.1 * sparrenhoehe * cos
+  const xb = kSattel + 1.5 * sparrenhoehe * cos
+  const sparren: Punkt[] = [
+    [xa, unten(xa)],
+    [0, unten(0)],
+    [0, 0],
+    [kSattel, 0],
+    [xb, unten(xb)],
+    [xb, unten(xb) + lot],
+    [xa, unten(xa) + lot],
+  ]
+  const pf = Math.max(kSattel * 1.15, sparrenhoehe * 0.7)
+  const pfette: Punkt[] = [
+    [0, 0],
+    [pf, 0],
+    [pf, -pf],
+    [0, -pf],
+  ]
+  const b = blatt([...sparren, ...pfette], { l: 46, r: 40, o: 16, u: 34 })
+  b.zug(pfette, 'fill="currentColor" fill-opacity="0.07" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"', true)
+  b.zug(sparren, FLAECHE, true)
+  // Senkelriss durch die Kervenecke bis zur Oberkante
+  const oben: Punkt = [0, unten(0) + lot]
+  b.zug([[0, 0], oben], HILF)
+  // Kerventiefe: winkelrecht von der Ecke auf die Unterkante
+  const fuss: Punkt = [kerve * sin, -kerve * cos]
+  b.zug([[0, 0], fuss], HILF)
+  b.mass({ ...(() => { const [x, y] = b.px([pf / 2, -pf / 2]); return { x, y } })(), wert: 0, art: 'len', text: 'Fußpfette', klein: true })
+  // unten: Sattel; links: Wange und Obholz auf dem Senkelriss
+  b.kette([[0, 0], [kSattel, 0]], { h: b.kante.unten + KETTE_1 })
+  b.kette([[0, unten(0)], [0, 0], oben], { v: b.kante.links - KETTE_1 })
+  // Sparrenhöhe und Kerventiefe winkelrecht zur Sparrenkante
+  const p: Punkt = [xb * 0.82, unten(xb * 0.82)]
+  b.kette([p, [p[0] - sparrenhoehe * sin, p[1] + sparrenhoehe * cos]], { p: -13 }, { werte: [sparrenhoehe] })
+  b.aufStrecke([0, 0], fuss, kerve, { klein: true })
+  b.anPunkt([kSattel, 0], neigungGrad, 20, -7, { art: 'ang', klein: true })
   return b.fertig()
 }

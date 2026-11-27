@@ -98,7 +98,7 @@
   async function bericht() {
     berichtLaeuft = true
     try {
-      const massText = (m: Mass): string => `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`
+      const massText = (m: Mass): string => (m.text ? t(m.text) : `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`)
       const teile: BerichtTeil[] = RECHNER.filter((r) => !r.eigen && aktiv.eingaben[r.id]).flatMap((r) => {
         const roh = aktiv.eingaben[r.id]
         const e = berechne(r, roh, JE_CM[zustand.einheit])
@@ -114,7 +114,7 @@
               .filter((x) => x.text !== '')
               .map(({ f, text }): [string, string] => [t(f.label), f.art === 'select' ? t(f.optionen?.find((o) => o.wert === text)?.label ?? text) : f.art === 'liste' ? text : `${text} ${einheitVon(f.art, f.einheit)}`.trim()]),
             ausgaben: e.ausgaben.map((a): [string, string] => [t(a.label), `${formatiere(a.wert, a.art, a.stellen)} ${einheitVon(a.art, a.einheit)}`.trim()]),
-            zeichnung: e.zeichnung ? { svg: zeichnungAlsSvg(e.zeichnung, massText), breite: e.zeichnung.breite, hoehe: e.zeichnung.hoehe } : undefined,
+            zeichnungen: [...(e.zeichnung ? [e.zeichnung] : []), ...(e.details ?? []).map((d) => d.zeichnung)].map((z) => ({ svg: zeichnungAlsSvg(z, massText), breite: z.breite, hoehe: z.hoehe })),
             listen: [...(e.liste ? [e.liste] : []), ...(e.listen ?? [])].map((l) => ({
               titel: t(l.titel),
               kopf: l.kopf.map((k, i) => `${t(k)}${l.arten[i] === 'len' ? ` (${zustand.einheit})` : ''}`),

@@ -206,3 +206,27 @@ describe('Anriss am Sparren', () => {
     nah(r.anriss.kerveEnde, 0)
   })
 })
+
+describe('Laufmaße zum Antragen vom Bandmaß', () => {
+  it('von links und von rechts ergeben dieselben Stäbe, gespiegelt', async () => {
+    const { einteilung, laufmasse } = await import('./einteilung')
+    const r = einteilung(300, 6, 6, 'aussen')
+    const links = laufmasse(r.positionen, 6, 300, 'links')
+    const rechts = laufmasse(r.positionen, 6, 300, 'rechts')
+    expect(links.map((x) => x.kante)).toEqual(r.positionen)
+    nah(links[1].achse, 58.8 + 3)
+    nah(links[1].ferneKante, 58.8 + 6)
+    // symmetrische Einteilung: von rechts dieselben Zahlen
+    rechts.forEach((x, i) => nah(x.kante, links[i].kante))
+    // unsymmetrisch (Eckmaß): der Stab am rechten Ende liegt von rechts bei 0
+    const ecke = einteilung(300, 6, 5, 'ecke')
+    const vonRechts = laufmasse(ecke.positionen, 6, 300, 'rechts')
+    nah(vonRechts[0].kante, 0)
+    nah(vonRechts[0].achse, 3)
+    nah(vonRechts[4].ferneKante, 300 - ecke.positionen[0])
+    // jedes Maß von links plus das zugehörige von rechts ergibt die Gesamtlänge
+    const vonLinks = laufmasse(ecke.positionen, 6, 300, 'links')
+    vonLinks.forEach((x, i) => nah(x.achse + vonRechts[4 - i].achse, 300))
+    expect(vonRechts.map((x) => x.kante)).toEqual([...vonRechts.map((x) => x.kante)].sort((a, b) => a - b))
+  })
+})

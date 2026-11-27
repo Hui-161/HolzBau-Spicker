@@ -1,11 +1,11 @@
 import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, sattelgaube, walmgaube, pultdach, schleppgaube, zeltdach, kehlbalken, lattung, schifter, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from '../core/dach'
 import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig, stern } from '../core/dreieck'
-import { einteilung, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
+import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneDachfenster, zeichneDreieck, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
-import { opt, zahl, type Ausgabe, type Liste, type Rechner } from './types'
+import { zeichneDachfenster, zeichneDreieck, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte } from './types'
 
 const L = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'len', wichtig })
 const W = (label: string, wert: number, wichtig = false): Ausgabe => ({ label, wert, art: 'ang', wichtig })
@@ -19,6 +19,29 @@ const qm = (a: number, b: number, jeCm: number): number => (a / jeCm / 100) * (b
 
 /** Wo ein Gaubensparren oben und unten endet */
 const ENDET = { voll: 'Traufe und First', kehle: 'Kehle und First', grat: 'Traufe und Grat', beides: 'Kehle und Grat' }
+
+/** Auswahl, von welchem Ende das Bandmaß angelegt wird */
+const VON: Feld = {
+  id: 'von',
+  label: 'Bandmaß anlegen',
+  art: 'select',
+  vorgabe: 'links',
+  optionen: [
+    { wert: 'links', label: 'von links' },
+    { wert: 'rechts', label: 'von rechts' },
+  ],
+}
+const seite = (w: Werte): 'links' | 'rechts' => (w.von === 'rechts' ? 'rechts' : 'links')
+
+/** Anrissliste mit fortlaufenden Maßen ab dem gewählten Ende */
+const laufListe = (was: string, m: { kante: number; achse: number; ferneKante: number }[], von: 'links' | 'rechts'): Liste => ({
+  titel: von === 'links' ? 'Anriss fortlaufend von links' : 'Anriss fortlaufend von rechts',
+  kopf: [was, 'nahe Kante', 'Achse', 'ferne Kante'],
+  arten: ['int', 'len', 'len', 'len'],
+  zeilen: m.map((x, i) => [i + 1, x.kante, x.achse, x.ferneKante]),
+})
+
+const detail = (titel: string, z: ReturnType<typeof zeichneKerve>): { titel: string; zeichnung: NonNullable<typeof z> }[] => (z ? [{ titel, zeichnung: z }] : [])
 
 export const GRUPPEN = ['Dach', 'Einteilung', 'Winkel & Maßkontrolle', 'Sonstiges', 'Dokumente']
 
@@ -42,6 +65,7 @@ export const RECHNER: Rechner[] = [
       const r = sparren({ grundmass: zahl(w, 'g'), neigung: zahl(w, 'a'), ueberstand: zahl(w, 'ue'), sparrenhoehe: zahl(w, 'h'), kerve: zahl(w, 'k') })
       return {
         zeichnung: zeichneSparren(zahl(w, 'g'), zahl(w, 'ue'), zahl(w, 'a'), zahl(w, 'h'), zahl(w, 'k')),
+        details: detail('Detail Kerve', zeichneKerve(zahl(w, 'a'), zahl(w, 'h'), zahl(w, 'k'))),
         ausgaben: [
           L('Sparrenlänge gesamt', r.laengeGesamt, true),
           L('davon Fußpfette bis First', r.laengeGrund),
@@ -450,7 +474,7 @@ export const RECHNER: Rechner[] = [
     titel: 'Einteilung',
     gruppe: 'Einteilung',
     kurz: 'Stäbe, Latten, Pfosten gleichmäßig verteilen',
-    info: 'Außenmaß: ein Stab an jedem Ende. Eckmaß: Stab nur am Ende. Innenmaß: an beiden Enden ein Feld. Positionen sind jeweils die linke Kante des Stabes.',
+    info: 'Außenmaß: ein Stab an jedem Ende. Eckmaß: Stab nur am Ende. Innenmaß: an beiden Enden ein Feld. Die Anrissliste ist fortlaufend: Das Bandmaß bleibt am gewählten Ende eingehängt, jedes Maß zählt ab dort. „Nahe Kante“ ist die Stabkante, die dem Bandanfang zugewandt ist.',
     felder: [
       {
         id: 'art',
@@ -477,20 +501,21 @@ export const RECHNER: Rechner[] = [
       },
       { id: 'amax', label: 'max. Achsmaß', art: 'len', wenn: (w) => w.modus === 'achs' },
       { id: 'n', label: 'Anzahl Stäbe', art: 'int', wenn: (w) => w.modus === 'anzahl' },
+      VON,
     ],
     rechne: (w) => {
       const art = w.art as EinteilArt
       const n = w.modus === 'achs' ? stabAnzahl(zahl(w, 'b'), zahl(w, 't'), zahl(w, 'amax'), art) : zahl(w, 'n')
       const r = einteilung(zahl(w, 'b'), zahl(w, 't'), n, art)
       return {
-        zeichnung: zeichneEinteilung(zahl(w, 'b'), zahl(w, 't'), r.positionen),
+        zeichnung: zeichneEinteilung(zahl(w, 'b'), zahl(w, 't'), r.positionen, seite(w)),
         ausgaben: [
           L('Lichtes Maß (Feld)', r.feldbreite, true),
           L('Achsmaß', r.achsmass, true),
           { label: 'Anzahl Stäbe', wert: r.anzahl, art: 'int' },
           { label: 'Anzahl Felder', wert: r.felder, art: 'int' },
         ],
-        liste: { titel: 'Anriss ab Anfang', kopf: ['Stab', 'linke Kante'], arten: ['int', 'len'], zeilen: r.positionen.map((p, i) => [i + 1, p]) },
+        liste: laufListe('Stab', laufmasse(r.positionen, zahl(w, 't'), zahl(w, 'b'), seite(w)), seite(w)),
       }
     },
   },
@@ -499,24 +524,25 @@ export const RECHNER: Rechner[] = [
     titel: 'Sparreneinteilung',
     gruppe: 'Einteilung',
     kurz: 'Achsmaß und Anriss auf der Pfette',
-    info: 'Gemessen ab Außenkante Giebel. Der erste und der letzte Sparren sitzen im Randabstand zur Giebelkante.',
+    info: 'Gemessen ab Außenkante Giebel. Der erste und der letzte Sparren sitzen im Randabstand zur Giebelkante. Die Anrissliste ist fortlaufend: Das Bandmaß bleibt am gewählten Giebel eingehängt, jedes Maß zählt ab dort.',
     felder: [
       { id: 'l', label: 'Länge Giebel bis Giebel (außen)', art: 'len' },
       { id: 's', label: 'Sparrenbreite', art: 'len' },
       { id: 'r', label: 'Randabstand', art: 'len', vorgabe: 0, hinweis: 'Giebelkante bis Außenkante erster Sparren' },
       { id: 'a', label: 'max. Achsmaß', art: 'len' },
+      VON,
     ],
     rechne: (w) => {
       const r = sparrenEinteilung({ laenge: zahl(w, 'l'), sparrenbreite: zahl(w, 's'), randabstand: zahl(w, 'r'), maxAchs: zahl(w, 'a') })
       return {
-        zeichnung: zeichneEinteilung(zahl(w, 'l'), zahl(w, 's'), r.sparren.map((p) => p.kante)),
+        zeichnung: zeichneEinteilung(zahl(w, 'l'), zahl(w, 's'), r.sparren.map((p) => p.kante), seite(w)),
         ausgaben: [
           L('Achsmaß', r.achsmass, true),
           { label: 'Anzahl Sparren', wert: r.anzahl, art: 'int', wichtig: true },
           L('Lichtes Maß', r.lichtesMass),
           { label: 'Anzahl Felder', wert: r.felder, art: 'int' },
         ],
-        liste: { titel: 'Anriss ab Giebelkante', kopf: ['Sparren', 'linke Kante', 'Achse'], arten: ['int', 'len', 'len'], zeilen: r.sparren.map((p, i) => [i + 1, p.kante, p.achse]) },
+        liste: laufListe('Sparren', laufmasse(r.sparren.map((p) => p.kante), zahl(w, 's'), zahl(w, 'l'), seite(w)), seite(w)),
       }
     },
   },

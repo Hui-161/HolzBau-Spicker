@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Art, Ergebnis, Feld, Liste, Mass, Rechner, Werte } from '../calcs/types'
+  import type { Art, Ergebnis, Feld, Liste, Mass, Rechner, Werte, Zeichnung } from '../calcs/types'
   import { EingabeFehler } from '../core/trig'
   import { t, tSkizze } from './sprache.svelte'
   import { aktivesProjekt, einheitVon, formatiere, JE_CM, leseZahl, schalteFavorit, sichere, zustand } from './zustand.svelte'
@@ -77,10 +77,26 @@
   /** Tabellenzelle: feste Wörter übersetzen, alles andere formatieren */
   const zelle = (c: number | string | number[], art: Art): string => (art === 'wort' && typeof c === 'string' ? t(c) : formatiere(c, art))
 
-  const massText = (m: Mass): string => `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`
+  const massText = (m: Mass): string => (m.text ? t(m.text) : `${m.name ? `${t(m.name)} ` : ''}${m.vor ?? ''}${formatiere(m.wert, m.art)}${m.art === 'ang' ? '°' : ''}`)
 
   const fav = $derived(zustand.favoriten.includes(rechner.id))
 </script>
+
+{#snippet bild(z: Zeichnung)}
+  <svg class="zeichnung" viewBox={`0 0 ${z.breite} ${z.hoehe}`} role="img" aria-label={t('Maßstäbliche Zeichnung')}>
+    {@html z.inhalt}
+    {#each z.masse ?? [] as m, i (i)}
+      {@const text = massText(m)}
+      {#if m.hinterlegt}
+        <rect class="grund" x={m.x - text.length * 2.8 - 3} y={m.y - 6.5} width={text.length * 5.6 + 6} height="13" rx="2" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined} />
+      {/if}
+      <text class="mass" class:klein={m.klein} x={m.x} y={m.y} text-anchor={m.anker ?? 'middle'} dominant-baseline="middle" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined}
+        >{text}</text
+      >
+    {/each}
+  </svg>
+  {#if z.masse?.length}<p class="legende">{t('Maße in')} {zustand.einheit}</p>{/if}
+{/snippet}
 
 {#if rechner.skizze}
   <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${t(rechner.titel)}`}>{@html tSkizze(rechner.skizze)}</svg>
@@ -128,21 +144,12 @@
       <p class="fehler">{t(h)}</p>
     {/each}
     {#if stand.ergebnis.zeichnung}
-      {@const z = stand.ergebnis.zeichnung}
-      <svg class="zeichnung" viewBox={`0 0 ${z.breite} ${z.hoehe}`} role="img" aria-label={t('Maßstäbliche Zeichnung')}>
-        {@html z.inhalt}
-        {#each z.masse ?? [] as m, i (i)}
-          {@const text = massText(m)}
-          {#if m.hinterlegt}
-            <rect class="grund" x={m.x - text.length * 2.8 - 3} y={m.y - 6.5} width={text.length * 5.6 + 6} height="13" rx="2" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined} />
-          {/if}
-          <text class="mass" class:klein={m.klein} x={m.x} y={m.y} text-anchor={m.anker ?? 'middle'} dominant-baseline="middle" transform={m.drehung ? `rotate(${m.drehung} ${m.x} ${m.y})` : undefined}
-            >{text}</text
-          >
-        {/each}
-      </svg>
-      {#if z.masse?.length}<p class="legende">{t('Maße in')} {zustand.einheit}</p>{/if}
+      {@render bild(stand.ergebnis.zeichnung)}
     {/if}
+    {#each stand.ergebnis.details ?? [] as d (d.titel)}
+      <h2>{t(d.titel)}</h2>
+      {@render bild(d.zeichnung)}
+    {/each}
     <dl>
       {#each stand.ergebnis.ausgaben as a (a.label + a.art)}
         <div class:wichtig={a.wichtig}>

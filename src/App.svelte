@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { rechnerNachId } from './calcs'
+  import { RECHNER, rechnerNachId } from './calcs'
   import { VORLAGEN } from './core/dokumente'
   import Dokument from './lib/Dokument.svelte'
   import Info from './lib/Info.svelte'
@@ -20,6 +20,25 @@
     document.title = titel ? `${t(titel)} – ${t('Holzbau-Spicker')}` : t('Holzbau-Spicker')
     document.documentElement.lang = zustand.sprache
   })
+
+  // geöffnete Funktion merken: sie erscheint in der Menüleiste
+  $effect(() => {
+    const id = aktiv?.id
+    // Neue Funktionen hinten anfügen und die Reihenfolge sonst nicht ändern: die Knöpfe der
+    // Menüleiste sollen an ihrem Platz bleiben, damit man blind hin- und herspringen kann
+    if (id && !zustand.zuletzt.includes(id)) {
+      zustand.zuletzt = [...zustand.zuletzt, id].slice(-8)
+      sichere()
+    }
+  })
+
+  /** Schnellzugriff: erst die Favoriten, dann die zuletzt benutzten Funktionen */
+  const schnell = $derived(
+    [...new Set([...zustand.favoriten, ...zustand.zuletzt])]
+      .map((id) => RECHNER.find((r) => r.id === id))
+      .filter((r) => !!r)
+      .slice(0, 10)
+  )
 
   function setzeEinheit(e: Einheit) {
     zustand.einheit = e
@@ -72,6 +91,18 @@
     <Start />
   {/if}
 </main>
+
+<nav class="menue nicht-drucken" aria-label={t('Schnellzugriff')}>
+  <a class="fest" class:an={!titel} href="#/" aria-current={!titel ? 'page' : undefined}>{t('Start')}</a>
+  <div class="schnell">
+    {#each schnell as r (r.id)}
+      <a class:an={aktiv?.id === r.id} href={`#/${r.id}`} aria-current={aktiv?.id === r.id ? 'page' : undefined}>{t(r.titel)}</a>
+    {:else}
+      <span>{t('Favoriten und zuletzt benutzte Funktionen erscheinen hier.')}</span>
+    {/each}
+  </div>
+  <a class="fest" class:an={projektSeite} href="#/projekte" aria-current={projektSeite ? 'page' : undefined}>{t('Projekt')}</a>
+</nav>
 
 <footer>
   {t('Ergebnisse ohne Gewähr – vor dem Zuschnitt nachmessen. Kein Ersatz für Statik und Fachplanung. Alle Eingaben bleiben auf diesem Gerät.')}
@@ -144,6 +175,52 @@
     padding: 1rem;
     flex: 1;
   }
+  .menue {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    display: flex;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--rand);
+    background: var(--flaeche);
+  }
+  .menue a {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--rand);
+    border-radius: 0.6rem;
+    color: inherit;
+    font-size: 0.9rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .menue .fest {
+    font-weight: 600;
+  }
+  .menue a.an {
+    border-color: var(--akzent);
+    background: var(--akzent);
+    color: var(--grund);
+  }
+  .schnell {
+    flex: 1;
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .schnell span {
+    align-self: center;
+    padding: 0 0.4rem;
+    color: var(--leise);
+    font-size: 0.8rem;
+  }
   footer a {
     display: inline-block;
     padding: 0.6rem 0.5rem;
@@ -152,7 +229,8 @@
   footer {
     max-width: 44rem;
     margin: 0 auto;
-    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    /* Platz für die Menüleiste am unteren Rand */
+    padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
     color: var(--leise);
     font-size: 0.8rem;
     text-align: center;

@@ -32,6 +32,8 @@ export interface Projekt {
 interface Gespeichert {
   einheit: Einheit
   sprache: Sprache
+  /** zuletzt geöffnete Funktionen in der Reihenfolge des ersten Öffnens – für die Menüleiste */
+  zuletzt: string[]
   stammdaten: Stammdaten
   favoriten: string[]
   projekte: Projekt[]
@@ -88,6 +90,7 @@ function pruefeStand(d: Record<string, unknown>): Gespeichert {
     // ohne gespeicherte Wahl: Sprache des Geräts, sonst Englisch
     sprache: d.sprache === 'de' || d.sprache === 'en' ? d.sprache : (globalThis.navigator?.language ?? 'de').toLowerCase().startsWith('de') ? 'de' : 'en',
     favoriten: Array.isArray(d.favoriten) ? d.favoriten.filter((x): x is string => typeof x === 'string').slice(0, 200) : [],
+    zuletzt: Array.isArray(d.zuletzt) ? d.zuletzt.filter((x): x is string => typeof x === 'string').slice(0, 8) : [],
     projekte,
     aktiv: projekte.some((p) => p.id === d.aktiv) ? (d.aktiv as string) : projekte[0].id,
   }

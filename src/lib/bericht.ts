@@ -5,7 +5,7 @@ export interface BerichtTeil {
   titel: string
   eingaben: [string, string][]
   ausgaben: [string, string][]
-  zeichnung?: { svg: string; breite: number; hoehe: number }
+  zeichnungen: { svg: string; breite: number; hoehe: number }[]
   listen: { titel: string; kopf: string[]; zeilen: string[][] }[]
 }
 
@@ -133,12 +133,12 @@ export async function erzeugeBericht(b: Bericht): Promise<Blob> {
     y += 2
     schrift(true, 10)
     for (const a of teil.ausgaben) paar(a)
-    if (teil.zeichnung) {
-      const breite = Math.min(95, BREITE)
-      const hoehe = (breite * teil.zeichnung.hoehe) / teil.zeichnung.breite
+    for (const z of teil.zeichnungen) {
+      const breite = Math.min(120, BREITE)
+      const hoehe = (breite * z.hoehe) / z.breite
       platz(hoehe + 4)
       y += 2
-      doc.addImage(await svgAlsPng(teil.zeichnung.svg, teil.zeichnung.breite, teil.zeichnung.hoehe), 'PNG', LINKS, y, breite, hoehe)
+      doc.addImage(await svgAlsPng(z.svg, z.breite, z.hoehe), 'PNG', LINKS, y, breite, hoehe)
       y += hoehe + 2
     }
     for (const l of teil.listen) {
