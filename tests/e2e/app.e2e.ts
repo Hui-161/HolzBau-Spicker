@@ -16,9 +16,7 @@ const BEISPIELE: Record<string, string[]> = {
   neigung: ['30'],
   einteilung: ['300', '6', '62.5'],
   sparreneinteilung: ['1000', '8', '0', '80'],
-  diagonale: ['800', '600', '1001', '999'],
   '345': ['240'],
-  bogen: ['200', '40'],
   treppe: ['280'],
   holz: ['8', '16', '5', '10', '470'],
   massstab: ['2.5', '50'],
@@ -30,11 +28,13 @@ const BEISPIELE: Record<string, string[]> = {
 const IN_ZEICHNUNG: Record<string, Record<string, string>> = {
   rechtwinklig: { 'a =': '3', 'b =': '4' },
   dreieck: { 'a =': '7', 'b =': '9', 'c =': '12' },
+  diagonale: { 'L =': '800', 'B =': '600', 'd1 =': '1001', 'd2 =': '999' },
+  bogen: { 's =': '200', 'h =': '40' },
 }
 
 /** Maß in der Zeichnung antippen, Wert eintragen, bestätigen */
 async function trageEin(page: Page, mass: string, wert: string): Promise<void> {
-  await page.locator('.ergebnis svg.zeichnung').first().locator('text.tippbar', { hasText: mass }).click()
+  await page.locator('svg.zeichnung').first().locator('text.tippbar', { hasText: mass }).click()
   await page.locator('.massfeld input').fill(wert)
   await page.locator('.massfeld button[type=submit]').click()
 }
@@ -73,14 +73,14 @@ for (const sprache of ['de', 'en'] as const) {
     }
     for (const [id, werte] of Object.entries(IN_ZEICHNUNG)) {
       await page.goto(`./#/${id}`)
-      // keine Feldliste und keine zweite Zeichnung: eingetragen wird im Bild
-      await expect(page.locator('form[data-sprung]'), `Rechner ${id}`).toHaveCount(0)
+      // eine Zeichnung oben statt Skizze, darunter die Feldliste; eingetragen wird im Bild oder in der Liste
+      await expect(page.locator('form[data-sprung]'), `Rechner ${id}`).toHaveCount(1)
       await expect(page.locator('svg.skizze'), `Rechner ${id}`).toHaveCount(0)
-      await expect(page.locator('.ergebnis svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
+      await expect(page.locator('svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
       for (const [mass, wert] of Object.entries(werte)) await trageEin(page, mass, wert)
       await expect(page.locator('.ergebnis dl'), `Rechner ${id}`).toBeVisible()
       await expect(page.locator('.ergebnis dd').first(), `Rechner ${id}`).not.toHaveText(/NaN|Infinity|undefined/)
-      await expect(page.locator('.ergebnis svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
+      await expect(page.locator('svg.zeichnung'), `Rechner ${id}`).toHaveCount(1)
     }
     await page.goto('./#/verschnitt')
     await page.locator('textarea').nth(0).fill('500')
@@ -131,10 +131,18 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   // überzählige Angabe wird abgelehnt statt still ignoriert; das Bild zum Korrigieren bleibt stehen
   await trageEin(page, 'α =', '30')
   await expect(page.locator('.ergebnis .fehler')).toContainText('genau drei Werte')
-  await expect(page.locator('.ergebnis svg.zeichnung')).toHaveCount(1)
+  await expect(page.locator('svg.zeichnung')).toHaveCount(1)
   // Wert wieder leeren: es wird erneut gerechnet
   await trageEin(page, 'α =', '')
   await expect(page.locator('.ergebnis dl')).toContainText('90,00')
+  // die Liste ändert die Zeichnung sofort, ohne Bestätigen – auch bei unvollständigen Angaben
+  const liste = page.locator('form[data-sprung] input')
+  await liste.nth(2).fill('')
+  await liste.nth(0).fill('6')
+  await expect(page.locator('svg.zeichnung text.tippbar', { hasText: 'a = 6,0' })).toBeVisible()
+  await expect(page.locator('svg.zeichnung text.tippbar.berechnet', { hasText: 'c =' })).toBeVisible()
+  await liste.nth(2).fill('8')
+  await expect(page.locator('svg.zeichnung text.tippbar', { hasText: 'c = 8,0' })).toBeVisible()
 })
 
 test('Maß in der Zeichnung antippen ändert die Eingabe', async ({ page }) => {

@@ -258,8 +258,7 @@ export const EN: Record<string, string> = {
   // Winkel & Maßkontrolle
   Diagonalkontrolle: 'Diagonal check',
   'Ist das Rechteck im Winkel?': 'Is the rectangle square?',
-  'Sind beide Diagonalen gleich lang, ist das Rechteck im Winkel. Die gemessenen Diagonalen sind freiwillig.':
-    'If both diagonals are equal, the rectangle is square. The measured diagonals are optional.',
+  'Sind beide Diagonalen gleich lang, ist das Rechteck im Winkel. Die gemessenen Diagonalen d1 und d2 sind freiwillig. Werte in der Liste eintragen oder in der Zeichnung antippen.': 'If both diagonals are equal, the rectangle is square. The measured diagonals d1 and d2 are optional. Enter values in the list or tap them in the drawing.',
   Länge: 'Length',
   'Diagonale 1 gemessen': 'Diagonal 1 measured',
   'Diagonale 2 gemessen': 'Diagonal 2 measured',
@@ -285,7 +284,7 @@ export const EN: Record<string, string> = {
   'Das Maß muss größer als 0 sein.': 'The dimension must be greater than 0.',
   'Rechtwinkliges Dreieck': 'Right triangle',
   'Zwei Werte eingeben, Rest berechnen': 'Enter two values, get the rest',
-  'Maße in der Zeichnung antippen und zwei Werte eintragen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.':
+  'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. c ist die Hypotenuse, α liegt gegenüber von a.':
     'Fill in two fields, at least one of them a side. c is the hypotenuse, α is opposite a.',
   'Seite a': 'Side a',
   'Seite b': 'Side b',
@@ -309,7 +308,7 @@ export const EN: Record<string, string> = {
   Inkreisradius: 'Inradius',
   'Allgemeines Dreieck': 'General triangle',
   'Drei Werte eingeben, Rest berechnen': 'Enter three values, get the rest',
-  'Maße in der Zeichnung antippen und drei Werte eintragen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
+  'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).':
     'Fill in three fields, at least one of them a side. Each angle is opposite the side of the same name (α opposite a).',
   'Seiten müssen größer als 0 sein.': 'Sides must be greater than 0.',
   'Winkel müssen zwischen 0° und 90° liegen.': 'Angles must be between 0° and 90°.',
@@ -323,8 +322,6 @@ export const EN: Record<string, string> = {
   'Zwei Seiten zusammen müssen länger sein als die dritte.': 'Two sides together must be longer than the third.',
   Stichbogen: 'Segmental arch',
   'Radius aus Spannweite und Stich': 'Radius from span and rise',
-  Spannweite: 'Span',
-  Stich: 'Rise',
   'Spannweite (Sehne)': 'Span (chord)',
   Stichhöhe: 'Rise',
   Radius: 'Radius',
@@ -858,7 +855,7 @@ export const EN: Record<string, string> = {
   'Kraft': 'Force',
   'beanspruchter Rand unten, Hirnholzende links': 'loaded edge at the bottom, end grain on the left',
   'Faserrichtung ↔': 'grain direction ↔',
-  'Maße antippen und eintragen – blau ist eingegeben, grau berechnet oder offen': 'Tap dimensions to enter them – blue is entered, grey is calculated or open',
+  'blau ist eingegeben, grau berechnet oder offen – antippen oder unten eintragen': 'blue is entered, grey is calculated or open – tap or enter below',
   'Teile länger als die längste Stange': 'Parts longer than the longest stock',
   'aus mehreren Stangen stoßen': 'join from several stock lengths',
   'nicht zulassen': 'do not allow',
@@ -867,4 +864,5 @@ export const EN: Record<string, string> = {
   'Mindestens ein Teil ist länger als die längste Stange und wurde aus mehreren Stangen gestoßen. Ob ein Stoß zulässig ist, wo er liegt und wie er verbunden wird, ist selbst festzulegen.': 'At least one part is longer than the longest stock length and was joined from several lengths. Whether a joint is permissible, where it goes and how it is connected is for you to decide.',
   'Werte aus dem Rechner übernehmen:': 'Take values from calculator:',
   'übernommen': 'applied',
+  'Spannweite s und Stichhöhe h in der Liste eintragen oder in der Zeichnung antippen.': 'Enter span s and rise h in the list or tap them in the drawing.',
 }

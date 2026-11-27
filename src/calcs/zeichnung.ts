@@ -1320,3 +1320,47 @@ export function zeichneAbstaende(d: number, winkelGrad: number, a: { a1: number;
   for (const m of z.masse ?? []) if (!m.text) m.art = 'int'
   return { ...z, einheit: 'mm' }
 }
+
+/**
+ * Rechteck mit beiden Diagonalen zur Diagonalkontrolle. Alle vier Maße sind antippbar;
+ * „gegeben“ nennt die ausgefüllten Felder. Ohne gültige Länge und Breite eine feste Beispielform.
+ */
+export function zeichneDiagonale(laenge: number, breite: number, d1: number, d2: number, gegeben: string[], soll?: number): Zeichnung | undefined {
+  // Form aus dem, was schon eingetragen ist; das fehlende Maß im Verhältnis 8 : 5 dazu
+  const [lOk, bOk] = [gueltig(laenge) && laenge > 0, gueltig(breite) && breite > 0]
+  const l = lOk ? laenge : bOk ? breite * 1.6 : 16
+  const h = bOk ? breite : l / 1.6
+  const ecken: Punkt[] = [[0, 0], [l, 0], [l, h], [0, h]]
+  const b = blatt(ecken, { l: 16, r: 40, o: soll === undefined ? 16 : 30, u: 34 })
+  b.zug(ecken, FLAECHE, true)
+  b.zug([[0, 0], [l, h]], HILF)
+  b.zug([[0, h], [l, 0]], HILF)
+  const offen = (id: string): boolean => !gegeben.includes(id)
+  b.kette([[0, 0], [l, 0]], { h: b.kante.unten + KETTE_1 }, { werte: [laenge], vor: ['L = '], feld: ['l'], berechnet: [offen('l')] })
+  b.kette([[l, 0], [l, h]], { v: b.kante.rechts + KETTE_1 }, { werte: [breite], vor: ['B = '], feld: ['b'], berechnet: [offen('b')] })
+  // gemessene Diagonalen: je am unteren Drittel ihrer Linie, damit sie sich in der Mitte nicht treffen
+  b.aufStrecke([0, 0], [l * 0.62, h * 0.62], d1, { vor: 'd1 = ', feld: 'd1', berechnet: offen('d1') }, 8)
+  b.aufStrecke([l * 0.38, h * 0.62], [l, 0], d2, { vor: 'd2 = ', feld: 'd2', berechnet: offen('d2') }, 8)
+  if (soll !== undefined) b.mass({ ...ort(b, [l / 2, h], 0, -12), wert: soll, art: 'len', name: 'Diagonale Soll' })
+  return b.fertig()
+}
+
+/** Stichbogen über der Sehne: Spannweite und Stich antippbar, im Ergebnis mit Radius. */
+export function zeichneBogen(sehne: number, stich: number, gegeben: string[], radius?: number): Zeichnung | undefined {
+  // Form aus dem, was schon eingetragen ist; der Stich höchstens bis zum Halbkreis
+  const [sOk, hOk] = [gueltig(sehne) && sehne > 0, gueltig(stich) && stich > 0]
+  const s_ = sOk ? sehne : hOk ? stich * 4 : 20
+  const h = Math.min(hOk ? stich : s_ / 4, s_ / 2)
+  const r = (s_ * s_) / (8 * h) + h / 2
+  const b = blatt([[0, 0], [s_, 0], [s_ / 2, h]], { l: 16, r: 44, o: radius === undefined ? 16 : 30, u: 34 })
+  const [[x0, y0], [x1, y1]] = [b.px([0, 0]), b.px([s_, 0])]
+  const rpx = (r * (x1 - x0)) / s_
+  b.roh(`<path fill="#f4eddc" stroke="#111" stroke-width="1.2" d="M${f1(x0)},${f1(y0)} A${f1(rpx)},${f1(rpx)} 0 0 1 ${f1(x1)},${f1(y1)} Z"/>`)
+  b.zug([[s_ / 2, 0], [s_ / 2, h]], HILF)
+  b.zug([[s_ / 2, h], [s_, h]], MASS)
+  const offen = (id: string): boolean => !gegeben.includes(id)
+  b.kette([[0, 0], [s_, 0]], { h: b.kante.unten + KETTE_1 }, { werte: [sehne], vor: ['s = '], feld: ['s'], berechnet: [offen('s')] })
+  b.kette([[s_, 0], [s_, h]], { v: b.kante.rechts + KETTE_1 }, { werte: [stich], vor: ['h = '], feld: ['h'], berechnet: [offen('h')] })
+  if (radius !== undefined) b.mass({ ...ort(b, [s_ / 2, h], 0, -12), wert: radius, art: 'len', name: 'Radius' })
+  return b.fertig()
+}

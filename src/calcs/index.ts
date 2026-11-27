@@ -4,7 +4,7 @@ import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt }
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
+import { zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneStern, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -771,13 +771,13 @@ export const RECHNER: Rechner[] = [
     titel: 'Diagonalkontrolle',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Ist das Rechteck im Winkel?',
-    info: 'Sind beide Diagonalen gleich lang, ist das Rechteck im Winkel. Die gemessenen Diagonalen sind freiwillig.',
-    skizze: `<rect ${S} x="20" y="20" width="170" height="80"/><path ${D} d="M20 100 L190 20 M20 20 L190 100"/><text ${T} text-anchor="middle" x="105" y="114">Länge</text><text ${T} x="196" y="64">Breite</text>`,
+    info: 'Sind beide Diagonalen gleich lang, ist das Rechteck im Winkel. Die gemessenen Diagonalen d1 und d2 sind freiwillig. Werte in der Liste eintragen oder in der Zeichnung antippen.',
+    vorschau: (w) => zeichneDiagonale(oderNaN(w, 'l'), oderNaN(w, 'b'), oderNaN(w, 'd1'), oderNaN(w, 'd2'), gegeben(w, ['l', 'b', 'd1', 'd2'])),
     felder: [
-      { id: 'l', label: 'Länge', art: 'len' },
-      { id: 'b', label: 'Breite', art: 'len' },
-      { id: 'd1', label: 'Diagonale 1 gemessen', art: 'len', optional: true },
-      { id: 'd2', label: 'Diagonale 2 gemessen', art: 'len', optional: true },
+      { id: 'l', label: 'Länge', art: 'len', inZeichnung: true },
+      { id: 'b', label: 'Breite', art: 'len', inZeichnung: true },
+      { id: 'd1', label: 'Diagonale 1 gemessen', art: 'len', optional: true, inZeichnung: true },
+      { id: 'd2', label: 'Diagonale 2 gemessen', art: 'len', optional: true, inZeichnung: true },
     ],
     rechne: (w) => {
       const r = diagonale(zahl(w, 'l'), zahl(w, 'b'), opt(w, 'd1'), opt(w, 'd2'))
@@ -785,7 +785,7 @@ export const RECHNER: Rechner[] = [
       if (r.abweichung1 !== undefined) aus.push(L('Abweichung Diagonale 1', r.abweichung1))
       if (r.abweichung2 !== undefined) aus.push(L('Abweichung Diagonale 2', r.abweichung2))
       if (r.differenz !== undefined) aus.push(L('Unterschied der Diagonalen', r.differenz, true))
-      return { ausgaben: aus }
+      return { zeichnung: zeichneDiagonale(zahl(w, 'l'), zahl(w, 'b'), oderNaN(w, 'd1'), oderNaN(w, 'd2'), gegeben(w, ['l', 'b', 'd1', 'd2']), r.soll), ausgaben: aus }
     },
   },
   {
@@ -825,14 +825,21 @@ export const RECHNER: Rechner[] = [
     titel: 'Rechtwinkliges Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Zwei Werte eingeben, Rest berechnen',
-    info: 'Maße in der Zeichnung antippen und zwei Werte eintragen, davon mindestens eine Seite. c ist die Hypotenuse, α liegt gegenüber von a.',
+    info: 'Zwei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. c ist die Hypotenuse, α liegt gegenüber von a.',
     // Eingabebild: feste Form, die Werte stehen als antippbare Maße daran
-    vorschau: (w) =>
-      zeichneDreieck(6, 10, Math.hypot(6, 10), (Math.atan2(6, 10) * 180) / Math.PI, {
+    vorschau: (w) => {
+      // Form aus dem, was schon eingetragen ist: Katheten direkt, sonst aus Winkel oder im Verhältnis 3 : 5
+      const [a0, b0, al, be] = [opt(w, 'a'), opt(w, 'b'), opt(w, 'alpha'), opt(w, 'beta')]
+      const winkel = al !== undefined && al > 0 && al < 90 ? al : be !== undefined && be > 0 && be < 90 ? 90 - be : undefined
+      const t = winkel !== undefined ? Math.tan((winkel * Math.PI) / 180) : 0.6
+      const a = a0 !== undefined && a0 > 0 ? a0 : b0 !== undefined && b0 > 0 ? b0 * t : 6
+      const b = b0 !== undefined && b0 > 0 ? b0 : a / t
+      return zeichneDreieck(a, b, Math.hypot(a, b), (Math.atan2(a, b) * 180) / Math.PI, {
         feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta' },
         gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta']),
         werte: { a: oderNaN(w, 'a'), b: oderNaN(w, 'b'), c: oderNaN(w, 'c'), alpha: oderNaN(w, 'alpha'), beta: oderNaN(w, 'beta'), gamma: 90 },
-      }),
+      })
+    },
     felder: [
       { id: 'a', label: 'Seite a', art: 'len', optional: true, inZeichnung: true },
       { id: 'b', label: 'Seite b', art: 'len', optional: true, inZeichnung: true },
@@ -853,13 +860,21 @@ export const RECHNER: Rechner[] = [
     titel: 'Allgemeines Dreieck',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Drei Werte eingeben, Rest berechnen',
-    info: 'Maße in der Zeichnung antippen und drei Werte eintragen, davon mindestens eine Seite. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
-    vorschau: (w) =>
-      zeichneDreieck(9, 11, 14, (Math.acos((11 * 11 + 14 * 14 - 9 * 9) / (2 * 11 * 14)) * 180) / Math.PI, {
+    info: 'Drei Werte eintragen, davon mindestens eine Seite – in der Liste oder durch Antippen in der Zeichnung. Jeder Winkel liegt der gleichnamigen Seite gegenüber (α gegenüber a).',
+    vorschau: (w) => {
+      // Form aus den schon eingetragenen Seiten; fehlende im Verhältnis 9 : 11 : 14 dazu, solange ein Dreieck entsteht
+      const gegebenS = [opt(w, 'a'), opt(w, 'b'), opt(w, 'c')].map((x) => (x !== undefined && x > 0 ? x : undefined))
+      const muster = [9, 11, 14]
+      const vorhanden = gegebenS.flatMap((x, i) => (x === undefined ? [] : [x / muster[i]]))
+      const f = vorhanden.length > 0 ? vorhanden.reduce((p, q) => p + q, 0) / vorhanden.length : 1
+      let [a, b, c] = gegebenS.map((x, i) => x ?? muster[i] * f)
+      if (!(a + b > c * 1.02 && a + c > b * 1.02 && b + c > a * 1.02)) [a, b, c] = muster
+      return zeichneDreieck(a, b, c, (Math.acos((b * b + c * c - a * a) / (2 * b * c)) * 180) / Math.PI, {
         feld: { a: 'a', b: 'b', c: 'c', alpha: 'alpha', beta: 'beta', gamma: 'gamma' },
         gegeben: gegeben(w, ['a', 'b', 'c', 'alpha', 'beta', 'gamma']),
         werte: { a: oderNaN(w, 'a'), b: oderNaN(w, 'b'), c: oderNaN(w, 'c'), alpha: oderNaN(w, 'alpha'), beta: oderNaN(w, 'beta'), gamma: oderNaN(w, 'gamma') },
-      }),
+      })
+    },
     felder: [
       { id: 'a', label: 'Seite a', art: 'len', optional: true, inZeichnung: true },
       { id: 'b', label: 'Seite b', art: 'len', optional: true, inZeichnung: true },
@@ -896,14 +911,15 @@ export const RECHNER: Rechner[] = [
     titel: 'Stichbogen',
     gruppe: 'Winkel & Maßkontrolle',
     kurz: 'Radius aus Spannweite und Stich',
-    skizze: `<path ${S} d="M30 95 Q120 -5 210 95"/><path ${D} d="M30 95 H210 M120 45 V95"/><text ${T} x="92" y="112">Spannweite</text><text ${T} x="126" y="76">Stich</text>`,
+    info: 'Spannweite s und Stichhöhe h in der Liste eintragen oder in der Zeichnung antippen.',
+    vorschau: (w) => zeichneBogen(oderNaN(w, 's'), oderNaN(w, 'h'), gegeben(w, ['s', 'h'])),
     felder: [
-      { id: 's', label: 'Spannweite (Sehne)', art: 'len' },
-      { id: 'h', label: 'Stichhöhe', art: 'len' },
+      { id: 's', label: 'Spannweite (Sehne)', art: 'len', inZeichnung: true },
+      { id: 'h', label: 'Stichhöhe', art: 'len', inZeichnung: true },
     ],
     rechne: (w) => {
       const r = bogen(zahl(w, 's'), zahl(w, 'h'))
-      return { ausgaben: [L('Radius', r.radius, true), L('Bogenlänge', r.bogenlaenge), W('Öffnungswinkel', r.winkel)] }
+      return { zeichnung: zeichneBogen(zahl(w, 's'), zahl(w, 'h'), gegeben(w, ['s', 'h']), r.radius), ausgaben: [L('Radius', r.radius, true), L('Bogenlänge', r.bogenlaenge), W('Öffnungswinkel', r.winkel)] }
     },
   },
 

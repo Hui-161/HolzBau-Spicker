@@ -21,7 +21,7 @@
 
   const werte = $derived<Werte>(Object.fromEntries(rechner.felder.map((f) => [f.id, istText(f) ? (roh[f.id] ?? '') : leseZahl(roh[f.id] ?? '')])))
   const sichtbar = $derived(rechner.felder.filter((f) => !f.wenn || f.wenn(werte)))
-  const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze && !f.inZeichnung))
+  const imFormular = $derived(sichtbar.filter((f) => !f.inSkizze))
   const ungueltig = (f: Feld): boolean => !istText(f) && (roh[f.id] ?? '').trim() !== '' && Number.isNaN(werte[f.id])
 
   type Stand = { ergebnis: Ergebnis } | { fehler: string } | { offen: true }
@@ -233,7 +233,7 @@
       <button type="submit">{t('Fertig')}</button>
     </form>
   {/if}
-  {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.berechnet && m.feld && feldVon(m.feld))}{' · '}{t('Maße antippen und eintragen – blau ist eingegeben, grau berechnet oder offen')}{:else if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
+  {#if z.masse?.length}<p class="legende">{t('Maße in')} {z.einheit ?? zustand.einheit}{#if z.masse.some((m) => m.berechnet && m.feld && feldVon(m.feld))}{' · '}{t('blau ist eingegeben, grau berechnet oder offen – antippen oder unten eintragen')}{:else if z.masse.some((m) => m.feld && feldVon(m.feld))}{' · '}{t('blaue Maße antippen zum Ändern')}{/if}</p>{/if}
 {/snippet}
 
 {#if rechner.skizze && !rechner.vorschau}
@@ -245,6 +245,12 @@
   {:else}
     <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${t(rechner.titel)}`}>{@html tSkizze(rechner.skizze)}</svg>
   {/if}
+{/if}
+
+{#if rechner.vorschau}
+  <!-- eine Zeichnung statt Skizze: sie zeigt den Stand der Eingaben und folgt jeder Änderung sofort -->
+  {@const oben = ('ergebnis' in stand ? stand.ergebnis.zeichnung : undefined) ?? rechner.vorschau(werte)}
+  {#if oben}<div class="bild-oben" data-sprung="z0">{@render bild(oben, 0)}</div>{/if}
 {/if}
 
 {#if angebot && quelle}
@@ -289,10 +295,6 @@
 </div>
 
 <section class="ergebnis" aria-live="polite">
-  {#if !('ergebnis' in stand) && rechner.vorschau}
-    {@const v = rechner.vorschau(werte)}
-    {#if v}{@render bild(v, 0)}{/if}
-  {/if}
   {#if 'fehler' in stand}
     <p class="fehler">{t(stand.fehler)}</p>
   {:else if 'offen' in stand}
@@ -301,7 +303,7 @@
     {#each stand.ergebnis.hinweise ?? [] as h (h)}
       <p class="fehler">{t(h)}</p>
     {/each}
-    {#if stand.ergebnis.zeichnung}
+    {#if stand.ergebnis.zeichnung && !rechner.vorschau}
       <div data-sprung="z0">{@render bild(stand.ergebnis.zeichnung, 0)}</div>
     {/if}
     {#each stand.ergebnis.details ?? [] as d, i (d.titel)}
@@ -486,6 +488,9 @@
   }
   :global([data-sprung]) {
     scroll-margin-top: 4.5rem;
+  }
+  .bild-oben {
+    margin-bottom: 0.75rem;
   }
   .uebernahme {
     display: flex;
