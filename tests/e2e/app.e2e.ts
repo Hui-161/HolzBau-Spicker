@@ -116,14 +116,15 @@ test('bekannte Ergebnisse stimmen in der Anzeige', async ({ page }) => {
   const text = await page.locator('.ergebnis').innerText()
   expect(text).toContain('692,8') // Gratlänge 400·√3
   expect(text).toContain('35,26') // Gratneigung
-  // Übersicht und fünf Details: Seitenansicht, Gratfuß, Querschnitt, Hexenschnitt, Anfallspunkt
+  // Seitenansicht oben und fünf Details: Grundriss mit Schiftern, Gratfuß, Querschnitt, Hexenschnitt, Anfallspunkt
   await expect(page.locator('svg.zeichnung')).toHaveCount(6)
   // mit Sparrenhöhe und Obholz kommt die Kerve je Seite dazu
   await felder.nth(7).fill('24')
   await felder.nth(8).fill('16')
-  await expect(page.locator('svg.zeichnung')).toHaveCount(8)
+  await expect(page.locator('svg.zeichnung')).toHaveCount(9)
   await expect(page.locator('.ergebnis')).toContainText('Kerve: Wange lotrecht')
-  await expect(page.locator('.ergebnis h2').first()).toContainText('Detail 1')
+  await expect(page.locator('.ergebnis h2').first()).toContainText('Grundriss mit Schiftern')
+  await expect(page.locator('.ergebnis')).toContainText('Arbeitsfolge am Gratsparren')
   await page.goto('./#/dreieck')
   for (const [mass, wert] of [['a =', '3'], ['b =', '4'], ['c =', '5']]) await trageEin(page, mass, wert)
   await expect(page.locator('.ergebnis')).toContainText('90,00')
@@ -191,6 +192,7 @@ test('Gratsparren übernimmt Werte aus dem Sparren, Zuschnitt stößt überlange
   await expect(grat.nth(2)).toHaveValue('400') // Grundmaß Hauptdach
   await expect(grat.nth(5)).toHaveValue('125') // Traufabschnitt lotrecht: 90° + Neigung
   await expect(grat.nth(8)).toHaveValue('18,31') // Obholz lotrecht (18 − 3) / cos 35°
+  await expect(grat.nth(9)).toHaveValue('50') // Dachüberstand
   await expect(page.locator('.ergebnis dl')).toBeVisible()
 
   await page.goto('./#/verschnitt')

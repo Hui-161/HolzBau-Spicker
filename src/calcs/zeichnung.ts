@@ -280,6 +280,8 @@ export interface SparrenBild {
   auflagerOben?: number
   /** Kennungen der Eingabefelder für antippbare Maße, falls sie vom Sparren-Rechner abweichen */
   feld?: { ue?: string; g?: string; mp?: string; a?: string; b?: string; uh?: string }
+  /** Schnitt an der Traufe als Winkel zur Oberkante (Hexenschnitt am Grat); ohne Angabe lotrecht */
+  traufWinkel?: number
   /** Pultdach: Außenkante des oberen Auflagers – steht in der unteren Maßkette statt der Auflagerkante */
   aussenOben?: number
 }
@@ -305,6 +307,13 @@ export function zeichneSparren(e: SparrenBild): Zeichnung | undefined {
   const [tx, ty] = oben(-ueberstand)
   let anfang: Punkt[] = [[-ueberstand, unten(-ueberstand)]]
   if (profil === 'winkel') anfang = [[tx + sparrenhoehe * Math.sin(rad), ty - sparrenhoehe * Math.cos(rad)]]
+  if (e.traufWinkel !== undefined && ueberstand > 0) {
+    // Schnitt unter dem angegebenen Winkel zur Oberkante bis auf die Unterkante
+    const tw = (e.traufWinkel * Math.PI) / 180
+    const lang = sparrenhoehe / Math.sin(tw)
+    const fuss: Punkt = [tx + lang * Math.cos(rad - tw), ty + lang * Math.sin(rad - tw)]
+    if (gueltig(fuss[0], fuss[1]) && fuss[0] < -1e-9) anfang = [fuss]
+  }
   if (profil === 'kombi' && gueltig(e.stirn ?? NaN) && (e.stirn as number) < lot) anfang = [[tx, ty - (e.stirn as number)], [tx + (lot - (e.stirn as number)) / t, ty - (e.stirn as number)]]
   // Kerve an der Stelle x: Wange hoch zur Ecke, Waagriss zurück auf die Unterkante (am First höchstens bis zum Firstschnitt)
   const kerbe = (x: number): Punkt[] => (kerve > 0 ? [[x, unten(x)], [x, x * t], [Math.min(x + kSattel, grundmass), x * t]] : [])
@@ -1024,7 +1033,7 @@ export function zeichneGratAnfall(grundHaupt: number, grundWalm: number, breite:
  * Kerve an einer Seitenfläche des Gratsparrens, Blick auf die Fläche. Nullpunkt ist die Kervenecke
  * an dieser Fläche; der Senkel durch die Pfettenecke (Achse) liegt um den Verstich davor.
  */
-export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: number, sattel: number, obholz: number): Zeichnung | undefined {
+export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: number, sattel: number, obholz: number, lage?: number): Zeichnung | undefined {
   const g = (gratNeigung * Math.PI) / 180
   if (!gueltig(g, verstich, wange, sattel, obholz) || !(wange > 0) || !(obholz > 0)) return undefined
   const t = Math.tan(g)
@@ -1048,7 +1057,7 @@ export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: n
     [pf, -pf * 0.7],
     [0, -pf * 0.7],
   ]
-  const b = blatt([...flaeche_, ...pfette], { l: 46, r: 20, o: 16, u: 36 })
+  const b = blatt([...flaeche_, ...pfette], { l: 46, r: 20, o: lage === undefined ? 16 : 66, u: 36 })
   b.zug(pfette, SCHNITT, true)
   kreuz(b, pfette)
   b.zug(flaeche_, FLAECHE, true)
@@ -1060,6 +1069,7 @@ export function zeichneGratKerve(gratNeigung: number, verstich: number, wange: n
   b.kette([[-verstich, 0], [0, 0], [sattel, 0]], { h: b.kante.unten + KETTE_1 })
   b.kette([[0, unten(0)], [0, 0], oben], { v: b.kante.links - KETTE_1 })
   waagUndWinkel(b, sattel, pf, xb, gratNeigung)
+  if (lage !== undefined) lageAn(b, oben, gratNeigung, lage)
   return b.fertig()
 }
 

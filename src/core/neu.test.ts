@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { rechtwinklig } from './dreieck'
-import { gaubenSparrenliste, grat, gratAnfall, gratKerve, kehlbalken, sattelgaube, schleppgaube, sparren, walmgaube, zeltdach } from './dach'
+import { gaubenSparrenliste, grat, gratAnfall, gratAnriss, gratKerve, kehlbalken, sattelgaube, schleppgaube, sparren, walmgaube, zeltdach } from './dach'
 import { leseStueckliste, stosse, zuschnitt } from './stueckliste'
 import { leseTeile, verschnitt } from './sonstiges'
 import { mindestabstaendeStift, mindestholzdicke } from './verbindung'
@@ -422,5 +422,41 @@ describe('Rechtwinkliges Dreieck: jeder Winkel wird geprüft', () => {
     expect(() => rechtwinklig({ alpha: 50, beta: 30 })).toThrow(/zusammen 90°/)
     expect(() => rechtwinklig({ alpha: 50, beta: 40 })).toThrow(/mindestens eine Seite/)
     expect(() => rechtwinklig({ a: 20, beta: 800 })).toThrow(/zwischen 0° und 90°/)
+  })
+})
+
+describe('Anriss am Gratsparren', () => {
+  const rad = (g: number) => (g * Math.PI) / 180
+  const e = { neigungHaupt: 40, neigungWalm: 50, grundmassHaupt: 400, breite: 12 }
+  it('Überstand und Gesamtlänge aus dem räumlichen Abstand von Traufpunkt und Anfallspunkt', () => {
+    const g = grat(e)
+    const a = gratAnriss(e, 50)
+    // Überstand des Walms so, dass beide Traufen gleich hoch liegen
+    nah(50 * Math.tan(rad(40)), a.ueberstandWalm * Math.tan(rad(50)))
+    // Traufpunkt im Grundriss: um beide Überstände vor der Pfettenecke; Anfallspunkt um die beiden Grundmaße dahinter
+    const lang = Math.hypot(g.grundmassWalm + a.ueberstandWalm, 400 + 50, g.hoehe + 50 * Math.tan(rad(40)))
+    nah(a.laengeGesamt, lang)
+    nah(a.ueGrund, Math.hypot(50, a.ueberstandWalm))
+    nah(a.laengeUeberstand + g.gratLaenge, a.laengeGesamt)
+    // ohne Überstand bleibt es bei der Gratlänge
+    nah(gratAnriss(e, 0).laengeGesamt, g.gratLaenge)
+    nah(a.winkelSenkel + a.winkelWaage, 90)
+  })
+  it('Risse an den Seitenflächen: Verstich am Fuß und an der Kerve, Rücksprung am Anfallspunkt', () => {
+    const g = grat(e)
+    const c = Math.cos(rad(g.gratNeigung))
+    const a = gratAnriss(e, 50, 24, 16)
+    const k = gratKerve(e, 24, 16)
+    nah(a.traufeHaupt * c, g.verstichHaupt)
+    nah(a.kerve!.achse, a.laengeUeberstand)
+    // waagerecht gemessen liegt der Kervensenkel der Seitenfläche um den Verstich hinter der Pfettenecke
+    nah((a.kerve!.haupt - a.kerve!.achse) * c, g.verstichHaupt)
+    nah((a.kerve!.walmEnde - a.kerve!.walm) * c, k.walm.sattel)
+    // Kerventiefe winkelrecht: lotrechte Wange auf der Achse mal cos γ
+    nah(a.kerve!.tiefeAchse, k.wangeAchse * c)
+    nah((a.anfallAchse - a.anfallHaupt!) * c, gratAnfall(e).rueckHaupt)
+    // ohne Sparrenhöhe keine Kerve, ohne Breite keine Seitenrisse am Anfallspunkt
+    expect(gratAnriss(e, 50).kerve).toBeUndefined()
+    expect(gratAnriss({ ...e, breite: 0 }, 50).anfallHaupt).toBeUndefined()
   })
 })

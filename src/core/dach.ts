@@ -645,3 +645,54 @@ export function gratKerve(e: GratEingabe, hoeheGrat: number, obholz: number) {
     walm: seite(g.abgratungWalm, g.verstichWalm),
   }
 }
+
+/**
+ * Anriss am Gratsparren, entsprechend dem Anriss am Sparren: alle Lagen entlang der Kante gemessen,
+ * ab dem Senkel durch den Traufpunkt auf der Gratachse. Weil alle Senkelrisse parallel sind, gelten
+ * die Maße an Achse, Ober- und Unterkante gleich. An den Seitenflächen sitzt jeder Riss um den
+ * Verstich weiter innen (Fuß, Kerve) bzw. um den Rücksprung früher (Anfallspunkt).
+ *
+ * grundmassHaupt zählt hier ab Außenkante Fußpfette, ueberstand ist der waagerechte Dachüberstand
+ * des Hauptdachs davor. Beide Traufen liegen auf gleicher Höhe.
+ */
+export function gratAnriss(e: GratEingabe, ueberstand: number, hoeheGrat?: number, obholz?: number) {
+  pruefe(ueberstand >= 0, 'Dachüberstand darf nicht negativ sein.')
+  const g = grat(e)
+  const c = cos(g.gratNeigung)
+  // der Grat läuft im Grundriss schräg: sein Überstand ist um das Verhältnis Gratgrund : Grundmaß länger
+  const ueGrund = (ueberstand * g.gratGrund) / e.grundmassHaupt
+  const laengeUeberstand = ueGrund / c
+  const laengeGesamt = laengeUeberstand + g.gratLaenge
+  const kv = hoeheGrat !== undefined && obholz !== undefined ? gratKerve(e, hoeheGrat, obholz) : undefined
+  const an = e.breite > 0 ? gratAnfall(e) : undefined
+  return {
+    /** Überstand des Grats im Grundriss, in Gratrichtung */
+    ueGrund,
+    laengeUeberstand,
+    laengeGesamt,
+    /** Überstand des Walms, damit seine Traufe auf gleicher Höhe liegt */
+    ueberstandWalm: (ueberstand * tan(e.neigungHaupt)) / tan(e.neigungWalm),
+    /** Winkel der Risse zur Sparrenkante */
+    winkelSenkel: 90 - g.gratNeigung,
+    winkelWaage: g.gratNeigung,
+    /** an den Seitenflächen beginnt die Traufe (Hexenschnitt) um den Verstich hinter dem Traufpunkt */
+    traufeHaupt: g.verstichHaupt / c,
+    traufeWalm: g.verstichWalm / c,
+    /** Kerve über der Pfettenecke: Senkelriss an der Achse und an den Seitenflächen, Ende des Waagrisses an der Unterkante */
+    kerve: kv
+      ? {
+          achse: laengeUeberstand,
+          haupt: laengeUeberstand + kv.haupt.verstichKante,
+          walm: laengeUeberstand + kv.walm.verstichKante,
+          hauptEnde: laengeUeberstand + kv.haupt.verstichKante + kv.haupt.sattel / c,
+          walmEnde: laengeUeberstand + kv.walm.verstichKante + kv.walm.sattel / c,
+          /** Kerventiefe winkelrecht zur Unterkante, auf der Achse */
+          tiefeAchse: kv.wangeAchse * c,
+        }
+      : undefined,
+    /** Anfallspunkt auf der Achse; an den Seitenflächen liegt der Senkelriss der Backe um den Rücksprung davor */
+    anfallAchse: laengeGesamt,
+    anfallHaupt: an ? laengeGesamt - an.rueckHauptKante : undefined,
+    anfallWalm: an ? laengeGesamt - an.rueckWalmKante : undefined,
+  }
+}

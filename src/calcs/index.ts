@@ -1,4 +1,4 @@
-import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, gratAnfall, gratKerve, sattelgaube, walmgaube, pultdach, schleppgaube, zeltdach, kehlbalken, lattung, schifter, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from '../core/dach'
+import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, gratAnfall, gratAnriss, gratKerve, sattelgaube, walmgaube, pultdach, schleppgaube, zeltdach, kehlbalken, lattung, schifter, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from '../core/dach'
 import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from '../core/dreieck'
 import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
 import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
@@ -160,26 +160,26 @@ export const RECHNER: Rechner[] = [
   },
   {
     id: 'grat',
-    beispiel: { ah: 40, aw: 50, x: 400, b: 12, th: 90, tw: 90 },
+    beispiel: { ah: 40, aw: 50, x: 400, b: 12, th: 90, tw: 90, hg: 22, ob: 16 },
     // Neigung, Grundmaß, Obholz und Traufabschnitt des Hauptdachs stehen schon im Sparren-Rechner
     uebernahme: {
       von: 'sparren',
       werte: (q) => {
-        const [g, a, h, k] = [q.g as number, q.a as number, q.h as number, q.k as number]
+        const [g, a, h, k, ue] = [q.g as number, q.a as number, q.h as number, q.k as number, q.ue as number]
         if (![g, a].every(Number.isFinite) || !(a > 0 && a < 90)) return undefined
         const obholz = Number.isFinite(h) && h > 0 ? (h - (Number.isFinite(k) ? k : 0)) / Math.cos((a * Math.PI) / 180) : undefined
-        return { ah: a, x: g, th: q.tr === 'winkel' ? 90 : 90 + a, ...(obholz !== undefined && obholz > 0 ? { ob: obholz } : {}) }
+        return { ah: a, x: g, th: q.tr === 'winkel' ? 90 : 90 + a, ...(obholz !== undefined && obholz > 0 ? { ob: obholz } : {}), ...(Number.isFinite(ue) && ue >= 0 ? { ue } : {}) }
       },
     },
     titel: 'Grat- und Kehlsparren',
     gruppe: 'Dach',
     kurz: 'Gratlänge, Gratneigung, Abgratung',
-    info: 'Gilt für Grat und Kehle, auch bei ungleichen Dachneigungen. Die Abgratung ist lotrecht gemessen. Die Gratverschiebung ist ein Grundrissmaß quer zur Gratlinie. Der Verstich ist ein Grundrissmaß in Gratrichtung: der Versatz der Sparrenkante gegenüber der Achse an der Traufe. Der Hexenschnitt wird an der Seitenfläche zur Gratoberkante angerissen. Am Anfallspunkt endet der Grat mit zwei lotrechten Backen, die sich auf der Achse treffen; gerechnet ist bis zum Anfallspunkt, halbe Holzstärken der anschließenden Hölzer selbst abziehen. Die Kerve bezieht sich auf die Außenecke der Fußpfetten: An jeder Seitenfläche sitzt ihr Senkelriss um den Verstich weiter innen, das Obholz gilt dort ab der abgegrateten Kante. Die Details 4 bis 6 gelten für den Grat, nicht für die Kehle. Die Schifterliste gilt für den Grat: Länge der Schifterachse in der Dachfläche ab Traufe, ohne Überstand. Die Lage ist immer ab Gratfuß angegeben, auch wenn das Raster am Anfallspunkt beginnt.',
+    info: 'Gilt für Grat und Kehle, auch bei ungleichen Dachneigungen. Die Abgratung ist lotrecht gemessen. Die Gratverschiebung ist ein Grundrissmaß quer zur Gratlinie. Der Verstich ist ein Grundrissmaß in Gratrichtung: der Versatz der Sparrenkante gegenüber der Achse an der Traufe. Der Hexenschnitt wird an der Seitenfläche zur Gratoberkante angerissen. Am Anfallspunkt endet der Grat mit zwei lotrechten Backen, die sich auf der Achse treffen; gerechnet ist bis zum Anfallspunkt, halbe Holzstärken der anschließenden Hölzer selbst abziehen. Die Kerve bezieht sich auf die Außenecke der Fußpfetten: An jeder Seitenfläche sitzt ihr Senkelriss um den Verstich weiter innen, das Obholz gilt dort ab der abgegrateten Kante. Aufbau wie beim Sparren: Das Grundmaß zählt ab Außenkante Fußpfette, der Dachüberstand kommt davor; alle Lagen der Anrissliste gelten entlang der Kante ab dem Senkel durch den Traufpunkt. Die Seitenansicht zeigt den Schnitt in der Gratachse. Hexenschnitt, Kerve und Anfallspunkt gelten für den Grat, nicht für die Kehle. Die Schifterliste gilt für den Grat: Länge der Schifterachse in der Dachfläche ab Traufe, ohne Überstand. Die Lage ist immer ab Gratfuß angegeben, auch wenn das Raster am Anfallspunkt beginnt.',
     skizze: `<path ${S} d="M20 100 H200 V25"/><path ${S} d="M200 100 L110 25 H200"/><path ${D} d="M110 25 V100"/><text ${T} text-anchor="end" x="200" y="16">Grundmaß Walm</text><text ${T} x="20" y="66">Grundmaß HD</text><text ${T} x="160" y="52">Grat</text><text ${T} x="20" y="115">Traufe Hauptdach</text>`,
     felder: [
       { id: 'ah', label: 'Neigung Hauptdach', art: 'ang', vorgabe: 35 },
       { id: 'aw', label: 'Neigung Walm', art: 'ang', vorgabe: 35 },
-      { id: 'x', label: 'Grundmaß Hauptdach', art: 'len', hinweis: 'waagerecht von Traufe bis First' },
+      { id: 'x', label: 'Grundmaß Hauptdach', art: 'len', hinweis: 'waagerecht von Außenkante Fußpfette bis First, wie beim Sparren' },
       { id: 'b', label: 'Breite Grat-/Kehlsparren', art: 'len', vorgabe: 0 },
       { id: 'e', label: 'Sparrenabstand für Schifterliste', art: 'len', optional: true },
       {
@@ -194,8 +194,9 @@ export const RECHNER: Rechner[] = [
       },
       { id: 'th', label: 'Traufabschnitt Hauptdach', art: 'ang', vorgabe: 90, hinweis: 'zur Sparrenoberkante: 90° = winkelrecht, 90° + Dachneigung = lotrecht' },
       { id: 'tw', label: 'Traufabschnitt Walm', art: 'ang', vorgabe: 90 },
-      { id: 'hg', label: 'Höhe Grat-/Kehlsparren', art: 'len', optional: true, hinweis: 'für Hexenschnitt und Kerve' },
+      { id: 'hg', label: 'Höhe Grat-/Kehlsparren', art: 'len', optional: true, hinweis: 'für Seitenansicht, Hexenschnitt und Kerve' },
       { id: 'ob', label: 'Obholz lotrecht der Sparren', art: 'len', optional: true, hinweis: 'für die Kerve; Wert aus dem Sparren-Rechner' },
+      { id: 'ue', label: 'Dachüberstand Hauptdach (waagerecht)', art: 'len', vorgabe: 0, hinweis: 'vor der Fußpfette, wie beim Sparren; der Grat steht entsprechend weiter über' },
     ],
     rechne: (w) => {
       const eingabe = { neigungHaupt: zahl(w, 'ah'), neigungWalm: zahl(w, 'aw'), grundmassHaupt: zahl(w, 'x'), breite: zahl(w, 'b'), abschnittHaupt: zahl(w, 'th'), abschnittWalm: zahl(w, 'tw') }
@@ -207,7 +208,9 @@ export const RECHNER: Rechner[] = [
       const hg = opt(w, 'hg')
       const ob = opt(w, 'ob')
       const an = mitBreite ? gratAnfall(eingabe) : undefined
-      const kerve = mitBreite && hg && ob ? gratKerve(eingabe, hg, ob) : undefined
+      const kerve = hg && ob ? gratKerve(eingabe, hg, ob) : undefined
+      const ue = opt(w, 'ue') ?? 0
+      const anr = gratAnriss(eingabe, ue, kerve ? hg : undefined, kerve ? ob : undefined)
       const lotGrat = hg ? hg / Math.cos((r.gratNeigung * Math.PI) / 180) : undefined
       const hexeGleich = Math.abs(r.hexeHaupt - r.hexeWalm) < 1e-9 && Math.abs(r.abgratungHaupt - r.abgratungWalm) < 1e-9
       const schifterListe = (titel: string, z: { abstand: number; achse: number; kante: number }[]): Liste => ({
@@ -217,32 +220,38 @@ export const RECHNER: Rechner[] = [
         zeilen: z.map((x, i) => [i + 1, x.abstand, x.achse, x.kante]),
       })
       return {
-        zeichnung: zeichneGrat(zahl(w, 'x'), r.grundmassWalm, s?.haupt.map((z) => z.abstand) ?? [], s?.walm.map((z) => z.abstand) ?? []),
+        // Seitenansicht wie beim Sparren: Schnitt in der Gratachse mit Traufschnitt, Kerve über der Pfettenecke und Anfallspunkt.
+        // Ohne Sparrenhöhe ist die Holzstärke nur angedeutet.
+        zeichnung: zeichneSparren({ grundmass: r.gratGrund, ueberstand: anr.ueGrund, neigung: r.gratNeigung, sparrenhoehe: hg ?? r.gratGrund * 0.035, kerve: anr.kerve?.tiefeAchse ?? 0, traufWinkel: r.hexeHaupt, feld: {} }),
         details: [
-          ...detail('Detail 1: Seitenansicht mit wahrer Länge', zeichneGratSeite(r.gratGrund, r.hoehe, r.gratNeigung)),
+          ...detail('Detail Grundriss mit Schiftern', zeichneGrat(zahl(w, 'x'), r.grundmassWalm, s?.haupt.map((z) => z.abstand) ?? [], s?.walm.map((z) => z.abstand) ?? [])),
           ...(mitBreite
             ? [
-                ...detail('Detail 2: Grundriss am Gratfuß mit Verstich', zeichneGratFuss(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), r.winkelHaupt, r.winkelWalm)),
-                ...detail('Detail 3: Querschnitt mit Abgratung, lotrecht geschnitten', zeichneGratQuerschnitt(zahl(w, 'b'), r.abgratungHaupt, r.abgratungWalm)),
+                ...detail('Detail Gratfuß: Grundriss mit Verstich', zeichneGratFuss(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), r.winkelHaupt, r.winkelWalm)),
+                ...detail('Detail Abgratung: Querschnitt, lotrecht geschnitten', zeichneGratQuerschnitt(zahl(w, 'b'), r.abgratungHaupt, r.abgratungWalm)),
               ]
             : []),
           ...(hexeGleich
-            ? detail('Detail 4: Hexenschnitt am Fuß, beide Seiten gleich', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined))
+            ? detail('Detail Hexenschnitt am Fuß, beide Seiten gleich', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined))
             : [
-                ...detail('Detail 4: Hexenschnitt am Fuß, Hauptdachseite', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined)),
-                ...detail('Detail 4: Hexenschnitt am Fuß, Walmseite', zeichneHexenschnitt(r.gratNeigung, r.hexeWalm, lotGrat ? lotGrat - r.abgratungWalm : undefined)),
+                ...detail('Detail Hexenschnitt am Fuß, Hauptdachseite', zeichneHexenschnitt(r.gratNeigung, r.hexeHaupt, lotGrat ? lotGrat - r.abgratungHaupt : undefined)),
+                ...detail('Detail Hexenschnitt am Fuß, Walmseite', zeichneHexenschnitt(r.gratNeigung, r.hexeWalm, lotGrat ? lotGrat - r.abgratungWalm : undefined)),
               ]),
-          ...(an ? detail('Detail 5: Grundriss am Anfallspunkt mit den Backen', zeichneGratAnfall(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), an.planHaupt, an.planWalm)) : []),
-          ...(kerve
+          ...(kerve && anr.kerve
             ? [
-                ...detail('Detail 6: Kerve, Ansicht der Hauptdachseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.haupt.verstich, kerve.haupt.wange, kerve.haupt.sattel, ob as number)),
-                ...detail('Detail 6: Kerve, Ansicht der Walmseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.walm.verstich, kerve.walm.wange, kerve.walm.sattel, ob as number)),
+                ...detail('Detail Kerve, Ansicht der Hauptdachseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.haupt.verstich, kerve.haupt.wange, kerve.haupt.sattel, ob as number, anr.kerve.haupt)),
+                ...detail('Detail Kerve, Ansicht der Walmseite – Strichpunktlinie: Senkel durch die Pfettenecke', zeichneGratKerve(r.gratNeigung, kerve.walm.verstich, kerve.walm.wange, kerve.walm.sattel, ob as number, anr.kerve.walm)),
               ]
             : []),
+          ...(an ? detail('Detail Anfallspunkt: Grundriss mit den Backen', zeichneGratAnfall(zahl(w, 'x'), r.grundmassWalm, zahl(w, 'b'), an.planHaupt, an.planWalm)) : []),
+          ...(hg ? detail('Detail Anfallspunkt: Seitenansicht mit Senkelschnitt', zeichneFirst(r.gratNeigung, hg, 0, 0, anr.anfallAchse, undefined, false)) : []),
         ],
         ausgaben: [
-          L('Gratsparrenlänge', r.gratLaenge, true),
+          L(ue > 0 ? 'Gratsparrenlänge gesamt' : 'Gratsparrenlänge', anr.laengeGesamt, true),
+          ...(ue > 0 ? [L('davon Pfettenecke bis Anfallspunkt', r.gratLaenge), L('davon Überstand', anr.laengeUeberstand), L('Überstand des Grats im Grundriss', anr.ueGrund), L('Dachüberstand Walm bei gleicher Traufhöhe', anr.ueberstandWalm)] : []),
           W('Gratneigung', r.gratNeigung, true),
+          W('Anriss: Senkelriss zur Sparrenkante', anr.winkelSenkel, true),
+          W('Anriss: Waagriss zur Sparrenkante', anr.winkelWaage, true),
           L('Gratgrundmaß', r.gratGrund),
           L('Grundmaß Walm', r.grundmassWalm),
           L('Firsthöhe', r.hoehe),
@@ -283,7 +292,46 @@ export const RECHNER: Rechner[] = [
             : []),
         ],
         hinweise: !mitBreite ? [] : ungleich ? ['Ungleiche Neigungen: Mittig auf der Gratlinie sind die Abgratungen verschieden hoch. Mit der Gratverschiebung werden sie gleich. Schifterlängen und Verstich gelten für den mittigen Grat.'] : [],
-        listen: s ? [schifterListe('Schifter Hauptdach', s.haupt), schifterListe('Schifter Walm', s.walm)] : [],
+        liste: {
+          titel: 'Anriss am Gratsparren, ab Traufpunkt entlang der Kante',
+          kopf: ['Nr.', 'Riss', 'Lage'],
+          arten: ['int', 'wort', 'len'],
+          zeilen: (
+            [
+              ['Traufpunkt auf der Gratachse', 0],
+              ...(mitBreite ? [['Traufe an der Seitenfläche (Hauptdachseite): Beginn Hexenschnitt', anr.traufeHaupt], ['Traufe an der Seitenfläche (Walmseite): Beginn Hexenschnitt', anr.traufeWalm]] : []),
+              ...(anr.kerve
+                ? [
+                    ['Kerve: Senkel durch die Pfettenecke (Gratachse)', anr.kerve.achse],
+                    ...(mitBreite ? [['Kerve: Senkelriss an der Seitenfläche (Hauptdachseite)', anr.kerve.haupt], ['Kerve: Senkelriss an der Seitenfläche (Walmseite)', anr.kerve.walm]] : []),
+                    ['Kerve: Ende des Waagrisses an der Unterkante (Hauptdachseite)', anr.kerve.hauptEnde],
+                    ['Kerve: Ende des Waagrisses an der Unterkante (Walmseite)', anr.kerve.walmEnde],
+                  ]
+                : []),
+              ...(anr.anfallHaupt !== undefined && anr.anfallWalm !== undefined ? [['Anfallspunkt: Senkelriss der Backe an der Seitenfläche (Hauptdachseite)', anr.anfallHaupt], ['Anfallspunkt: Senkelriss der Backe an der Seitenfläche (Walmseite)', anr.anfallWalm]] : []),
+              ['Anfallspunkt auf der Gratachse', anr.anfallAchse],
+            ] as [string, number][]
+          )
+            .sort((p, q) => p[1] - q[1])
+            .map((z, i) => [i + 1, z[0], z[1]]),
+        },
+        listen: [
+          {
+            titel: 'Arbeitsfolge am Gratsparren',
+            kopf: ['Nr.', 'Schritt'],
+            arten: ['int', 'wort'] as Liste['arten'],
+            zeilen: [
+              'Gratlinie mittig auf der Oberseite anreißen; bei Gratverschiebung um das angegebene Maß versetzt.',
+              'Traufpunkt auf der Gratlinie festlegen und von dort alle Lagen der Anrissliste entlang der Kante antragen.',
+              'Senkelrisse an beiden Seitenflächen anreißen: am Winkel den Senkelriss zur Sparrenkante einstellen. Waagrisse liegen im Winkel der Gratneigung zur Kante.',
+              'Abgratung: an jeder Seitenfläche das lotrechte Abgratungsmaß von der Oberkante herunter anreißen und zur Gratlinie hin abhobeln.',
+              'Kerve: an jeder Seitenfläche auf dem Senkelriss das Obholz ab der abgegrateten Kante herunter messen, von dort den Waagriss bis zur Unterkante ziehen, ausschneiden.',
+              'Fuß: Hexenschnitt an jeder Seitenfläche unter dem angegebenen Winkel zur Oberkante anreißen, die beiden Risse über die Unterseite verbinden, schneiden.',
+              'Anfallspunkt: Backenschmiegen auf der Oberseite von der Gratlinie zu den Senkelrissen der Seitenflächen anreißen und lotrecht schneiden. Halbe Holzstärken der anschließenden Hölzer vorher abziehen.',
+            ].map((schritt, i) => [i + 1, schritt]),
+          },
+          ...(s ? [schifterListe('Schifter Hauptdach', s.haupt), schifterListe('Schifter Walm', s.walm)] : []),
+        ],
       }
     },
   },
