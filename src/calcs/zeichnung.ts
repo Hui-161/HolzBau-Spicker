@@ -1419,3 +1419,35 @@ export function zeichneDachGrundriss(laenge: number, breite: number, ueberstandT
   b.kette(fx([[-uo, 0], [-uo, breite], [-uo, breite + ut]]), { v: b.kante.links - KETTE_1 }, { feld: ['b', ut > 0 ? 'ut' : undefined] })
   return b.fertig()
 }
+
+/**
+ * Treppe im Schnitt: Stufen von der unteren zur oberen Fertigfußbodenhöhe. Die letzte Steigung
+ * endet auf dem oberen Boden, deshalb gibt es einen Auftritt weniger als Steigungen.
+ */
+export function zeichneTreppe(steigungen: number, steigung: number, auftritt: number, feldAuftritt = false): Zeichnung | undefined {
+  if (!gueltig(steigungen, steigung, auftritt) || steigungen < 1 || steigungen > 60 || !(steigung > 0) || !(auftritt > 0)) return undefined
+  const [lauf, hoch] = [(steigungen - 1) * auftritt, steigungen * steigung]
+  const stufen: Punkt[] = [[0, 0]]
+  for (let i = 0; i < steigungen; i++) {
+    stufen.push([i * auftritt, (i + 1) * steigung])
+    if (i < steigungen - 1) stufen.push([(i + 1) * auftritt, (i + 1) * steigung])
+  }
+  const vor = Math.max(auftritt * 1.2, lauf * 0.12)
+  const b = blatt([[-vor, 0], [lauf + vor, hoch]], { l: 34, r: 40, o: 36, u: 38 })
+  // Körper unter den Stufen leicht getönt, Böden als dickere Linien
+  b.zug([...stufen, [lauf + vor, hoch], [lauf + vor, hoch - steigung * 0.9], [lauf, hoch - steigung * 0.9], [0, -steigung * 0.9], [-vor * 0, -steigung * 0.9]], 'fill="#f4eddc" stroke="none"', true)
+  b.zug([[-vor, 0], [0, 0]], DICK)
+  b.zug([[lauf, hoch], [lauf + vor, hoch]], DICK)
+  b.zug(stufen, LINIE)
+  // Lauflinie über die Stufenvorderkanten
+  if (steigungen > 1) b.zug([[0, steigung], [lauf, hoch]], HILF)
+  b.kette([[0, 0], [lauf, 0]], { h: b.kante.unten + KETTE_1 }, { kurz: true })
+  b.kette([[lauf + vor, 0], [lauf + vor, hoch]], { v: b.kante.rechts + KETTE_1 }, { feld: ['h'], kurz: true })
+  // eine Stufe oben bemaßt: Auftritt und Steigung
+  if (steigungen > 1) {
+    const i = steigungen - 2
+    b.kette([[i * auftritt, hoch], [(i + 1) * auftritt, hoch]], { h: b.kante.oben - KETTE_1 }, { feld: [feldAuftritt ? 'au' : undefined], kurz: true })
+    b.kette([[-vor, 0], [-vor, steigung]], { v: b.px([-vor, 0])[0] - 10 }, { kurz: true })
+  }
+  return b.fertig()
+}

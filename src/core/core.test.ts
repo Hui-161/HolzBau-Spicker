@@ -3,7 +3,7 @@ import { dachfensterWechsel, dachflaecheSattel, grat, sattelgaube, pultdach, sch
 import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from './dreieck'
 import { einteilung, sparrenEinteilung, stabAnzahl } from './einteilung'
 import { neigungAusSchwerkraft } from './sensor'
-import { holzmenge, leseLaengen, leseTeile, massstab, treppe, verschnitt } from './sonstiges'
+import { gelaenderstaebe, holzmenge, leseLaengen, leseTeile, massstab, treppe, verschnitt } from './sonstiges'
 import { mindestabstaende, mindestabstaendeStift } from './verbindung'
 
 const nah = (ist: number, soll: number, stellen = 6) => expect(ist).toBeCloseTo(soll, stellen)
@@ -390,6 +390,26 @@ describe('Befunde der Rechenkontrolle', () => {
     nah(e.schrittmass, 2 * 17.5 + 27)
     nah(treppe(280).schrittmass, 63)
     expect(() => treppe(280, 18, 63, 0)).toThrow()
+    // vorgegebene Lauflänge: Stufenzahl mit dem Schrittmaß am nächsten an 63
+    const l = treppe(280, 18, 63, undefined, 400)
+    nah(l.lauflaenge, 400)
+    nah(l.auftritt, 400 / (l.steigungen - 1))
+    for (let n = 14; n <= 20; n++) expect(Math.abs(l.schrittmass - 63)).toBeLessThanOrEqual(Math.abs(560 / n + 400 / (n - 1) - 63) + 1e-9)
+    nah(l.teilungSchraeg, Math.hypot(l.steigung, l.auftritt))
+    // ein eingetragener Auftritt geht vor
+    nah(treppe(280, 18, 63, 27, 400).auftritt, 27)
+  })
+  it('Geländerstäbe: gleiche lichte Abstände, Höchstmaß eingehalten, so wenige Stäbe wie möglich', () => {
+    for (const [lang, stab, max] of [[300, 2, 12], [95, 4, 12], [120, 3, 10.5], [11, 2, 12]]) {
+      const r = gelaenderstaebe(lang, stab, max)
+      expect(r.licht).toBeLessThanOrEqual(max + 1e-9)
+      nah((r.anzahl + 1) * r.licht + r.anzahl * stab, lang)
+      // mit einem Stab weniger wäre das Höchstmaß überschritten
+      if (r.anzahl > 0) expect((lang - (r.anzahl - 1) * stab) / r.anzahl).toBeGreaterThan(max)
+      r.kanten.forEach((k, i) => nah(k, r.licht + i * r.achsmass))
+    }
+    expect(gelaenderstaebe(11, 2, 12).anzahl).toBe(0)
+    nah(gelaenderstaebe(300, 2, 12, 35).schraeg.achsmass, gelaenderstaebe(300, 2, 12).achsmass / Math.cos((35 * Math.PI) / 180))
   })
   it('Stabzahl: meldet klar, wenn nichts passt, und liefert nie null Stäbe', () => {
     expect(() => stabAnzahl(81, 14.3, 15.14, 'ecke')).toThrow('Mit diesem Achsmaß')

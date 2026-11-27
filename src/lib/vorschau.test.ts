@@ -43,6 +43,6 @@ describe('Eingabezeichnung aus Beispielwerten', () => {
     expect(z!.masse!.find((m) => m.feld === 'a')!.wert).toBe(95)
   })
   it('Rechner ohne Beispielwerte haben keine Eingabezeichnung', () => {
-    expect(vorschauAus(rechnerNachId('treppe')!, leer('treppe'), 1)).toBeUndefined()
+    expect(vorschauAus(rechnerNachId('holz')!, leer('holz'), 1)).toBeUndefined()
   })
 })

@@ -2,17 +2,32 @@ import { atan, pruefe } from './trig'
 
 /* ---------- Treppe (Schrittmaßregel, alle Maße in cm) ---------- */
 
-/** auftrittCm: fester Auftritt statt des Werts aus der Schrittmaßregel */
-export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittmassCm = 63, auftrittCm?: number) {
+/**
+ * auftrittCm: fester Auftritt statt des Werts aus der Schrittmaßregel.
+ * lauflaengeCm: vorgegebene Lauflänge; daraus die Stufenzahl, deren Schrittmaß dem Sollwert am nächsten kommt.
+ */
+export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittmassCm = 63, auftrittCm?: number, lauflaengeCm?: number) {
   pruefe(geschosshoeheCm > 0, 'Geschosshöhe muss größer als 0 sein.')
   pruefe(wunschSteigungCm > 0, 'Steigung muss größer als 0 sein.')
   // die Anzahl, deren Steigung dem Wunsch am nächsten kommt
   const unten = Math.max(1, Math.floor(geschosshoeheCm / wunschSteigungCm))
   const naeher = (n: number): number => Math.abs(geschosshoeheCm / n - wunschSteigungCm)
-  const steigungen = naeher(unten + 1) < naeher(unten) ? unten + 1 : unten
-  const steigung = geschosshoeheCm / steigungen
+  let steigungen = naeher(unten + 1) < naeher(unten) ? unten + 1 : unten
   if (auftrittCm !== undefined) pruefe(auftrittCm > 0, 'Auftritt muss größer als 0 sein.')
-  const auftritt = auftrittCm ?? schrittmassCm - 2 * steigung
+  if (lauflaengeCm !== undefined && auftrittCm === undefined) {
+    pruefe(lauflaengeCm > 0, 'Lauflänge muss größer als 0 sein.')
+    // alle Stufenzahlen mit einer Steigung zwischen 14 und 21 cm durchgehen; es zählt das Schrittmaß
+    let beste: number | undefined
+    let abstand = Infinity
+    for (let n = Math.max(2, Math.ceil(geschosshoeheCm / 21 - 1e-9)); n <= Math.floor(geschosshoeheCm / 14 + 1e-9); n++) {
+      const d = Math.abs((2 * geschosshoeheCm) / n + lauflaengeCm / (n - 1) - schrittmassCm)
+      if (d < abstand - 1e-9) [beste, abstand] = [n, d]
+    }
+    pruefe(beste !== undefined, 'Für diese Geschosshöhe gibt es keine Stufenzahl mit 14 bis 21 cm Steigung.')
+    steigungen = beste as number
+  }
+  const steigung = geschosshoeheCm / steigungen
+  const auftritt = auftrittCm ?? (lauflaengeCm !== undefined ? lauflaengeCm / (steigungen - 1) : schrittmassCm - 2 * steigung)
   pruefe(auftritt > 0, 'Mit dieser Steigung ergibt sich kein Auftritt.')
   return {
     steigungen,
@@ -21,12 +36,42 @@ export function treppe(geschosshoeheCm: number, wunschSteigungCm = 18, schrittma
     auftritt,
     lauflaenge: (steigungen - 1) * auftritt,
     neigung: atan(steigung / auftritt),
+    /** Stufenteilung auf der Wange: schräger Abstand von Stufenvorderkante zu Stufenvorderkante */
+    teilungSchraeg: Math.hypot(steigung, auftritt),
     /** Schrittmaß: 2 × Steigung + Auftritt; bequem sind etwa 59 bis 65 cm */
     schrittmass: 2 * steigung + auftritt,
     /** Bequemlichkeitsregel: a − s ≈ 12 cm */
     bequem: auftritt - steigung,
     /** Sicherheitsregel: a + s ≈ 46 cm */
     sicher: auftritt + steigung,
+  }
+}
+
+/* ---------- Geländerstäbe ---------- */
+
+/**
+ * Stäbe gleichmäßig zwischen zwei Pfosten verteilen, sodass der lichte Abstand überall gleich ist
+ * und das Höchstmaß nicht überschreitet. Alle Maße waagerecht; neigung > 0 rechnet sie zusätzlich
+ * auf die Schräge eines Treppengeländers um.
+ */
+export function gelaenderstaebe(lichteLaenge: number, stab: number, maxLicht: number, neigung = 0) {
+  pruefe(lichteLaenge > 0, 'Die Länge zwischen den Pfosten muss größer als 0 sein.')
+  pruefe(stab > 0, 'Die Stabdicke muss größer als 0 sein.')
+  pruefe(maxLicht > 0, 'Der lichte Abstand muss größer als 0 sein.')
+  pruefe(neigung >= 0 && neigung < 90, 'Neigung muss zwischen 0° und 90° liegen.')
+  // n Stäbe ergeben n + 1 Felder: (n + 1) · licht + n · stab = Länge
+  const anzahl = Math.max(0, Math.ceil((lichteLaenge - maxLicht) / (stab + maxLicht) - 1e-9))
+  pruefe(anzahl <= 500, 'Zu viele Stäbe (höchstens 500).')
+  const licht = (lichteLaenge - anzahl * stab) / (anzahl + 1)
+  const c = Math.cos((neigung * Math.PI) / 180)
+  return {
+    anzahl,
+    licht,
+    achsmass: licht + stab,
+    /** linke Kante jedes Stabs ab dem ersten Pfosten, waagerecht */
+    kanten: Array.from({ length: anzahl }, (_, i) => licht + i * (licht + stab)),
+    /** dieselben Maße entlang der Schräge (Handlauf, Wange) */
+    schraeg: { licht: licht / c, achsmass: (licht + stab) / c, laenge: lichteLaenge / c },
   }
 }
 

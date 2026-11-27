@@ -68,6 +68,8 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Gratsparren: Abgratungslinie (Kehle: Kehllinie) gestrichelt in Seitenansicht und Anfallspunkt, Gratlinie gestrichelt in den Ansichten der Seitenflächen (Hexenschnitt, Kerve)
 - Übersicht merkt die Scrollposition: Zurück aus einer Funktion landet an der verlassenen Stelle
 - Treppe: Auftritt wahlweise selbst eintragen, das Schrittmaß wird ausgewiesen und geprüft
+- Treppe: Schnittzeichnung, wahlweise vorgegebene Lauflänge (Stufenzahl nach Schrittmaß), Stufenteilung auf der Wange
+- Geländerstäbe: gleichmäßige Verteilung mit Höchstmaß für den lichten Abstand, Laufmaße, wahlweise auf die Schräge umgerechnet
 
 ## KI-Assistent (freiwillig)
 

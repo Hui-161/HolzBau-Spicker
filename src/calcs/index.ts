@@ -1,10 +1,10 @@
 import { dachfensterWechsel, dachflaecheSattel, gaubenSparrenliste, grat, gratAnfall, gratAnriss, gratKerve, sattelgaube, walmgaube, pultdach, schleppgaube, zeltdach, kehlbalken, lattung, schifter, neigungAusGrad, neigungAusMass, neigungAusProzent, sparren } from '../core/dach'
 import { bogen, diagonale, dreieck, dreiVierFuenf, rechtwinklig } from '../core/dreieck'
 import { einteilung, laufmasse, sparrenEinteilung, stabAnzahl, type EinteilArt } from '../core/einteilung'
-import { holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
+import { gelaenderstaebe, holzmenge, leseLaengen, massstab, treppe } from '../core/sonstiges'
 import { leseStueckliste, stosse, zuschnitt } from '../core/stueckliste'
 import { mindestabstaende, mindestabstaendeStift, mindestholzdicke, type Vorbohrung } from '../core/verbindung'
-import { zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
+import { zeichneTreppe, zeichneDachGrundriss, zeichneSatteldach, zeichneBogen, zeichneDiagonale, zeichneAbstaende, zeichneLattung, zeichneFirst, zeichneTraufe, zeichneDachflaeche, zeichneGaubeAnschluss, zeichneGaubeLaengs, zeichneGaubeQuer, zeichneKehlbalkenAnschluss, zeichneKehlbalkenStueck, zeichneDachfenster, zeichneDreieck, zeichneGratAnfall, zeichneGratKerve, zeichneHexenschnitt, zeichneGratFuss, zeichneGratQuerschnitt, zeichneGratSeite, zeichneKerve, zeichneEinteilung, zeichneGaube, zeichneSattelgaube, zeichneGrat, zeichneKehlbalken, zeichnePultdach, zeichneSparren, zeichneZeltdach } from './zeichnung'
 import { alleZiegel, maxBeiNeigung } from './ziegel'
 import { opt, zahl, type Ausgabe, type Feld, type Liste, type Rechner, type Werte, type Zeichnung } from './types'
 
@@ -1012,6 +1012,7 @@ export const RECHNER: Rechner[] = [
   /* ============ Sonstiges ============ */
   {
     id: 'treppe',
+    beispiel: { h: 280 },
     titel: 'Treppe',
     gruppe: 'Sonstiges',
     kurz: 'Steigung und Auftritt nach Schrittmaß',
@@ -1020,13 +1021,16 @@ export const RECHNER: Rechner[] = [
       { id: 'h', label: 'Geschosshöhe (OKFF bis OKFF)', art: 'len' },
       { id: 's', label: 'Wunsch-Steigung', art: 'len', optional: true, hinweis: 'leer = 18 cm' },
       { id: 'au', label: 'Auftritt', art: 'len', optional: true, hinweis: 'leer = aus der Schrittmaßregel berechnet' },
+      { id: 'll', label: 'Lauflänge vorgegeben', art: 'len', optional: true, hinweis: 'verfügbarer Platz: daraus Stufenzahl und Auftritt; ein eingetragener Auftritt geht vor' },
     ],
     rechne: (w, k) => {
       const au = opt(w, 'au')
-      const r = treppe(zahl(w, 'h') / k.jeCm, (opt(w, 's') ?? 18 * k.jeCm) / k.jeCm, 63, au === undefined ? undefined : au / k.jeCm)
+      const ll = opt(w, 'll')
+      const r = treppe(zahl(w, 'h') / k.jeCm, (opt(w, 's') ?? 18 * k.jeCm) / k.jeCm, 63, au === undefined ? undefined : au / k.jeCm, ll === undefined ? undefined : ll / k.jeCm)
       const schrittAus = r.schrittmass < 59 - 1e-9 || r.schrittmass > 65 + 1e-9
       const cm = (label: string, wert: number, wichtig = false): Ausgabe => L(label, wert * k.jeCm, wichtig)
       return {
+        zeichnung: zeichneTreppe(r.steigungen, r.steigung * k.jeCm, r.auftritt * k.jeCm, au !== undefined),
         ausgaben: [
           { label: 'Anzahl Steigungen', wert: r.steigungen, art: 'int', wichtig: true },
           cm('Steigung', r.steigung, true),
@@ -1035,6 +1039,7 @@ export const RECHNER: Rechner[] = [
           cm('Lauflänge', r.lauflaenge),
           W('Treppenneigung', r.neigung),
           cm('Schrittmaß: 2 × Steigung + Auftritt', r.schrittmass),
+          cm('Stufenteilung auf der Wange (schräg)', r.teilungSchraeg),
           cm('Bequemlichkeit: Auftritt − Steigung', r.bequem),
           cm('Sicherheit: Auftritt + Steigung', r.sicher),
         ],
@@ -1042,6 +1047,36 @@ export const RECHNER: Rechner[] = [
           ...(r.steigung > 20 || r.auftritt < 23 ? ['Steigung über 20 cm oder Auftritt unter 23 cm – für Wohngebäude meist nicht zulässig.'] : []),
           ...(schrittAus ? ['Das Schrittmaß liegt außerhalb von 59 bis 65 cm – die Treppe läuft sich unbequem.'] : []),
         ],
+      }
+    },
+  },
+  {
+    id: 'gelaender',
+    beispiel: { l: 300, d: 2, m: 12 },
+    titel: 'Geländerstäbe',
+    gruppe: 'Sonstiges',
+    kurz: 'Stäbe gleichmäßig zwischen zwei Pfosten',
+    info: 'Die Stäbe werden so verteilt, dass alle lichten Abstände gleich sind und das Höchstmaß nicht überschreiten. Üblich sind höchstens 12 cm lichter Abstand, wo mit Kindern zu rechnen ist – maßgebend sind die Landesbauordnung und DIN 18065. Mit Treppenneigung werden die Maße zusätzlich entlang von Handlauf und Wange ausgegeben; die Zeichnung zeigt die waagerechten Maße.',
+    felder: [
+      { id: 'l', label: 'Lichte Länge zwischen den Pfosten', art: 'len', hinweis: 'waagerecht gemessen' },
+      { id: 'd', label: 'Stabdicke', art: 'len' },
+      { id: 'm', label: 'Lichter Abstand höchstens', art: 'len', vorgabe: 12 },
+      { id: 'a', label: 'Treppenneigung', art: 'ang', optional: true, hinweis: 'leer = waagerechtes Geländer' },
+      VON,
+    ],
+    rechne: (w) => {
+      const neigung = opt(w, 'a') ?? 0
+      const r = gelaenderstaebe(zahl(w, 'l'), zahl(w, 'd'), zahl(w, 'm'), neigung)
+      const lauf = laufmasse(r.kanten, zahl(w, 'd'), zahl(w, 'l'), seite(w))
+      return {
+        zeichnung: zeichneEinteilung(zahl(w, 'l'), zahl(w, 'd'), r.kanten, seite(w), 'l'),
+        ausgaben: [
+          { label: 'Anzahl Stäbe', wert: r.anzahl, art: 'int', wichtig: true },
+          L('Lichter Abstand', r.licht, true),
+          L('Achsmaß', r.achsmass),
+          ...(neigung > 0 ? [L('Lichter Abstand entlang der Schräge', r.schraeg.licht), L('Achsmaß entlang der Schräge', r.schraeg.achsmass), L('Länge zwischen den Pfosten entlang der Schräge', r.schraeg.laenge)] : []),
+        ],
+        liste: laufListe('Stab', lauf, seite(w)),
       }
     },
   },
