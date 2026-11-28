@@ -1,7 +1,8 @@
 <script lang="ts">
   import qrcode from 'qrcode-generator'
-  import { RECHNER } from '../calcs'
-  import { t } from './sprache.svelte'
+  import { RECHNER, rechnerNachId } from '../calcs'
+  import type { Rechner } from '../calcs/types'
+  import { t, titelVon } from './sprache.svelte'
   import type { Mass } from '../calcs/types'
   import { erzeugeBericht, zeichnungAlsSvg, type BerichtTeil } from './bericht'
   import { alleFotos, anzahlFotos, ersetzeFotos, fotoAendern, fotoDazu, fotosVon, fotosWegVon, fotoWeg, MAX_FOTOS_GESAMT, MAX_FOTOS_JE_PROJEKT, pruefeFotos, type ProjektFoto } from './fotos'
@@ -30,7 +31,7 @@
   const aktiv = $derived(aktivesProjekt())
   /** Hauptergebnisse aller Rechner, für die das aktive Projekt vollständige Eingaben hat */
   const uebersicht = $derived(
-    RECHNER.filter((r) => !r.eigen && aktiv.eingaben[r.id]).flatMap((r) => {
+    [...RECHNER, ...zustand.kopien.map(rechnerNachId).filter((r): r is Rechner => !!r)].filter((r) => !r.eigen && aktiv.eingaben[r.id]).flatMap((r) => {
       const e = berechne(r, aktiv.eingaben[r.id], JE_CM[zustand.einheit])
       if (!e) return []
       const wichtig = e.ausgaben.filter((a) => a.wichtig)
@@ -328,7 +329,7 @@
     <p class="leise nicht-drucken">{t('Der Bericht enthält je Rechner die Eingaben, alle Ergebnisse, die Zeichnung und die Listen.')}</p>
     <button class="haupt nicht-drucken" disabled={berichtLaeuft} onclick={bericht}>{berichtLaeuft ? t('Bericht wird erstellt …') : t('Bericht als PDF')}</button>
     {#each uebersicht as u (u.rechner.id)}
-      <h3><a href={`#/${u.rechner.id}`}>{t(u.rechner.titel)}</a></h3>
+      <h3><a href={`#/${u.rechner.id}`}>{titelVon(u.rechner)}</a></h3>
       <dl>
         {#each u.ausgaben as a, i (i)}
           <div>

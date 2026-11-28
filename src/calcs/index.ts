@@ -1404,4 +1404,21 @@ export const RECHNER: Rechner[] = [
   },
 ]
 
-export const rechnerNachId = (id: string): Rechner | undefined => RECHNER.find((r) => r.id === id)
+const kopien = new Map<string, Rechner>()
+/** Rechner, die man mehrfach nebeneinander haben kann (eigene Ansichten wie Dokumente nicht) */
+export const kopierbar = (r: Rechner): boolean => !r.eigen && !r.nummer
+
+/**
+ * Rechner zur Kennung. „sparren~2“ ist eine weitere Ausgabe des Sparrenrechners: gleiche Formeln,
+ * eigene Eingaben (gespeichert unter dieser Kennung).
+ */
+export function rechnerNachId(id: string): Rechner | undefined {
+  const r = RECHNER.find((x) => x.id === id)
+  if (r) return r
+  const m = /^([a-z0-9-]+)~([2-9])$/i.exec(id)
+  const basis = m ? RECHNER.find((x) => x.id === m[1]) : undefined
+  if (!m || !basis || !kopierbar(basis)) return undefined
+  let k = kopien.get(id)
+  if (!k) kopien.set(id, (k = { ...basis, id, nummer: Number(m[2]) }))
+  return k
+}

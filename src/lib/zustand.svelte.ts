@@ -5,6 +5,7 @@ import { setzeEigeneZiegel, type Ziegel } from '../calcs/ziegel'
 
 export type Einheit = 'm' | 'cm' | 'mm'
 export type Sprache = 'de' | 'en'
+export type Thema = 'auto' | 'hell' | 'dunkel'
 type Eingaben = Record<string, Record<string, string>>
 
 /** Angaben, die in jeder Dokumentvorlage dieses Projekts vorbelegt werden */
@@ -33,8 +34,20 @@ export interface Projekt {
 interface Gespeichert {
   einheit: Einheit
   sprache: Sprache
-  /** zuletzt geöffnete Funktionen in der Reihenfolge des ersten Öffnens – für die Menüleiste */
+  /** Hell, dunkel oder wie das Gerät */
+  thema: Thema
+  /** zuletzt benutzte Funktionen, die zuletzt benutzte vorn – für die Menüleiste */
   zuletzt: string[]
+  /** auf der Startseite ausgeblendete Funktionen (die Suche findet sie weiterhin) */
+  ausgeblendet: string[]
+  /** Reihenfolge der Abschnitte auf der Startseite */
+  gruppenFolge: string[]
+  /** Kachel „KI-Assistent“ auf der Startseite zeigen */
+  kiKachel: boolean
+  /** weitere Ausgaben einer Funktion mit eigenen Eingaben, z. B. „sparren~2“ */
+  kopien: string[]
+  /** Hinweis „auf dem Startbildschirm installieren“ weggeklickt */
+  installWeg: boolean
   stammdaten: Stammdaten
   favoriten: string[]
   projekte: Projekt[]
@@ -49,6 +62,8 @@ const MAX_TEXT = 20000
 const neueId = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 const istObjekt = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
 
+/** Liste kurzer Kennungen aus fremden Daten, ohne doppelte */
+const woerter = (x: unknown, max: number): string[] => [...new Set(Array.isArray(x) ? x.filter((y): y is string => typeof y === 'string' && y.length <= 40) : [])].slice(0, max)
 const text = (x: unknown, max: number): string => (typeof x === 'string' ? x.slice(0, max) : '')
 
 /** Fremde Daten (Speicher, Import-Link) nur in geprüfter Form übernehmen. */
@@ -96,7 +111,13 @@ function pruefeStand(d: Record<string, unknown>): Gespeichert {
     // ohne gespeicherte Wahl: Sprache des Geräts, sonst Englisch
     sprache: d.sprache === 'de' || d.sprache === 'en' ? d.sprache : (globalThis.navigator?.language ?? 'de').toLowerCase().startsWith('de') ? 'de' : 'en',
     favoriten: Array.isArray(d.favoriten) ? d.favoriten.filter((x): x is string => typeof x === 'string').slice(0, 200) : [],
-    zuletzt: Array.isArray(d.zuletzt) ? d.zuletzt.filter((x): x is string => typeof x === 'string').slice(0, 8) : [],
+    zuletzt: woerter(d.zuletzt, 12),
+    thema: d.thema === 'hell' || d.thema === 'dunkel' ? d.thema : 'auto',
+    ausgeblendet: woerter(d.ausgeblendet, 200),
+    gruppenFolge: woerter(d.gruppenFolge, 20),
+    kiKachel: d.kiKachel !== false,
+    kopien: woerter(d.kopien, 30).filter((x) => /^[a-z0-9-]+~[2-9]$/i.test(x)),
+    installWeg: d.installWeg === true,
     projekte,
     aktiv: projekte.some((p) => p.id === d.aktiv) ? (d.aktiv as string) : projekte[0].id,
     ziegel: (Array.isArray(d.ziegel) ? d.ziegel : []).filter(istZiegel).slice(0, 100).map((z) => ({ id: z.id, name: z.name.slice(0, 80), min: z.min, max: z.max })),
@@ -279,4 +300,41 @@ export function formatiere(wert: number | string | number[], art: Art, stellen?:
   const v = Math.abs(wert) < 0.5 * 10 ** -n ? 0 : wert
   // ohne Tausendertrennung: „1.234“ wäre auf der Baustelle missverständlich
   return v.toLocaleString(zustand.sprache === 'de' ? 'de-DE' : 'en-GB', { minimumFractionDigits: fest ? n : 0, maximumFractionDigits: n, useGrouping: false })
+}
+
+/* ---------- Einstellungen ---------- */
+
+/** Löscht die Eingaben aller Rechner in allen Projekten; Dokumentvorlagen, Notizen und Projekte bleiben. */
+export function setzeEingabenZurueck(istRechner: (id: string) => boolean): number {
+  let n = 0
+  for (const p of zustand.projekte)
+    for (const id of Object.keys(p.eingaben))
+      if (istRechner(id)) {
+        delete p.eingaben[id]
+        n++
+      }
+  sichere()
+  return n
+}
+
+/** Weitere Ausgabe einer Funktion anlegen; liefert die neue Kennung (z. B. „sparren~2“) oder undefined, wenn alle Nummern belegt sind. */
+export function neueKopie(basis: string): string | undefined {
+  for (let n = 2; n <= 9; n++) {
+    const id = `${basis}~${n}`
+    if (!zustand.kopien.includes(id)) {
+      zustand.kopien = [...zustand.kopien, id]
+      sichere()
+      return id
+    }
+  }
+  return undefined
+}
+
+/** Ausgabe entfernen, samt ihrer Eingaben in allen Projekten */
+export function entferneKopie(id: string): void {
+  zustand.kopien = zustand.kopien.filter((x) => x !== id)
+  zustand.zuletzt = zustand.zuletzt.filter((x) => x !== id)
+  zustand.favoriten = zustand.favoriten.filter((x) => x !== id)
+  for (const p of zustand.projekte) delete p.eingaben[id]
+  sichere()
 }

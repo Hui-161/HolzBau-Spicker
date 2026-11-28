@@ -16,8 +16,9 @@
   -webkit-text-size-adjust: 100%;
 }
 
+/* Darstellung: wie das Gerät, oder in den Einstellungen fest hell bzw. dunkel (data-thema am <html>) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-thema='hell']) {
     --grund: #15171a;
     --flaeche: #1f2226;
     --text: #f1efe9;
@@ -28,6 +29,21 @@
     --kopf: #1f2226;
     --kopf-text: #f1efe9;
   }
+}
+:root[data-thema='dunkel'] {
+  --grund: #15171a;
+  --flaeche: #1f2226;
+  --text: #f1efe9;
+  --leise: #a8a399;
+  --rand: #3a3e44;
+  --akzent: #8fd19e;
+  --warn: #ff9483;
+  --kopf: #1f2226;
+  --kopf-text: #f1efe9;
+  color-scheme: dark;
+}
+:root[data-thema='hell'] {
+  color-scheme: light;
 }
 
 *,

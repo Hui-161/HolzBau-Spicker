@@ -4,7 +4,7 @@
   import { EingabeFehler } from '../core/trig'
   import { vorschauAus } from './vorschau'
   import { werteAus } from './werte'
-  import { t, tSkizze } from './sprache.svelte'
+  import { t, tSkizze, titelVon } from './sprache.svelte'
   import { aktivesProjekt, einheitVon, formatiere, JE_CM, leseZahl, schalteFavorit, sichere, zustand } from './zustand.svelte'
 
   let { rechner }: { rechner: Rechner } = $props()
@@ -107,7 +107,7 @@
 
   const text = (e: Ergebnis): string =>
     [
-      t(rechner.titel),
+      titelVon(rechner),
       ...sichtbar.filter((f) => (roh[f.id] ?? '') !== '').map((f) => `${t(f.label)}: ${f.art === 'select' ? (f.roheOptionen && roh[f.id] !== f.vorgabe ? (f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '') : t(f.optionen?.find((o) => o.wert === roh[f.id])?.label ?? '')) : `${roh[f.id]} ${einheitVon(f.art, f.einheit)}`}`),
       '—',
       ...e.ausgaben.map((a) => `${t(a.label)}: ${formatiere(a.wert, a.art, a.stellen)} ${einheitVon(a.art, a.einheit)}`),
@@ -281,7 +281,7 @@
     <svg bind:this={skizze} class="skizze waehlbar" viewBox="0 0 240 120" role="radiogroup" aria-label={t(rechner.felder.find((f) => f.inSkizze)?.label ?? '')} onclick={waehle} onkeydown={waehle}>{@html tSkizze(rechner.skizze)}</svg>
     <p class="legende">{t('Seite antippen, deren Maß bekannt ist')}</p>
   {:else}
-    <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${t(rechner.titel)}`}>{@html tSkizze(rechner.skizze)}</svg>
+    <svg class="skizze" viewBox="0 0 240 120" role="img" aria-label={`${t('Skizze')} ${titelVon(rechner)}`}>{@html tSkizze(rechner.skizze)}</svg>
   {/if}
 {/if}
 

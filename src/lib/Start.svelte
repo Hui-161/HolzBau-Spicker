@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { GRUPPEN, RECHNER } from '../calcs'
+  import { GRUPPEN, RECHNER, rechnerNachId } from '../calcs'
   import { STICHWORTE } from '../calcs/stichworte'
   import { suche as finde, type Suchbar } from '../core/suche'
   import { EN } from './en'
   import type { Rechner } from '../calcs/types'
-  import { t } from './sprache.svelte'
-  import { aktivesProjekt, schalteFavorit, sichere, zustand } from './zustand.svelte'
+  import { t, titelVon } from './sprache.svelte'
+  import { aktivesProjekt, schalteFavorit, zustand } from './zustand.svelte'
 
   let suche = $state('')
 
@@ -21,11 +21,22 @@
   /** Schlagwort, über das eine Funktion gefunden wurde */
   const ueber = $derived(new Map(treffer.map((x) => [x.id, x.ueber])))
   const gefunden = $derived(treffer.map((x) => RECHNER.find((r) => r.id === x.id)).filter((r): r is Rechner => !!r))
+  /** Abschnitte in der Reihenfolge aus den Einstellungen */
+  const gruppen = $derived([...zustand.gruppenFolge.filter((g) => GRUPPEN.includes(g)), ...GRUPPEN.filter((g) => !zustand.gruppenFolge.includes(g))])
+  /** Funktionen eines Abschnitts ohne die ausgeblendeten; weitere Ausgaben direkt hinter dem Original */
+  const inGruppe = (g: string): Rechner[] =>
+    RECHNER.filter((r) => r.gruppe === g && !zustand.ausgeblendet.includes(r.id)).flatMap((r) => [
+      r,
+      ...zustand.kopien
+        .filter((id) => id.startsWith(r.id + '~'))
+        .map(rechnerNachId)
+        .filter((k): k is Rechner => !!k),
+    ])
   const abschnitte = $derived(
     (sucht
       ? // bei einer Suche: eine Liste, beste Treffer zuerst
         [{ titel: 'Treffer', liste: gefunden }]
-      : [{ titel: 'Meine Favoriten', liste: RECHNER.filter((r) => zustand.favoriten.includes(r.id)) }, ...GRUPPEN.map((g) => ({ titel: g, liste: RECHNER.filter((r) => r.gruppe === g) }))]
+      : [{ titel: 'Meine Favoriten', liste: zustand.favoriten.map(rechnerNachId).filter((r): r is Rechner => !!r) }, ...gruppen.map((g) => ({ titel: g, liste: inGruppe(g) }))]
     ).filter((a) => a.liste.length > 0)
   )
 </script>
@@ -34,11 +45,11 @@
   {@const fav = zustand.favoriten.includes(r.id)}
   <li>
     <a href={`#/${r.id}`}>
-      <strong>{t(r.titel)}</strong>
+      <strong>{titelVon(r)}</strong>
       <span>{t(r.kurz)}</span>
       {#if sucht && ueber.get(r.id)}<span class="ueber">{t('gefunden über')}: {ueber.get(r.id)}</span>{/if}
     </a>
-    <button class:fav aria-pressed={fav} aria-label={`${t(r.titel)}: ${fav ? t('aus Favoriten entfernen') : t('als Favorit merken')}`} onclick={() => schalteFavorit(r.id)}>
+    <button class:fav aria-pressed={fav} aria-label={`${titelVon(r)}: ${fav ? t('aus Favoriten entfernen') : t('als Favorit merken')}`} onclick={() => schalteFavorit(r.id)}>
       {fav ? '★' : '☆'}
     </button>
   </li>
@@ -49,11 +60,11 @@
   <strong>{aktivesProjekt().name}</strong>
   <span class="mehr">{t('Projekte & Notizen')} ›</span>
 </a>
-<a class="projekt" href="#/ki">
+{#if zustand.kiKachel}<a class="projekt" href="#/ki">
   <span>{t('KI-Assistent')}</span>
   <strong>{t('Sprechen, Datenblatt lesen')}</strong>
   <span class="mehr">{t('freiwillig, eigener API-Schlüssel')} ›</span>
-</a>
+</a>{/if}
 
 <input class="suche" type="search" placeholder={t('Funktion oder Schlagwort suchen …')} aria-label={t('Funktion oder Schlagwort suchen')} bind:value={suche} />
 
@@ -70,11 +81,6 @@
   <p class="leer">{t('Nichts gefunden. Versuche ein anderes Wort, zum Beispiel das Bauteil.')}</p>
 {/each}
 
-<div class="sprache" role="group" aria-label="Sprache / Language">
-  {#each [['de', 'Deutsch'], ['en', 'English']] as const as [kuerzel, name] (kuerzel)}
-    <button aria-pressed={zustand.sprache === kuerzel} class:an={zustand.sprache === kuerzel} onclick={() => ((zustand.sprache = kuerzel), sichere())}>{name}</button>
-  {/each}
-</div>
 
 <style>
   .projekt {
@@ -156,26 +162,6 @@
   }
   button.fav {
     color: var(--akzent);
-  }
-  .sprache {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-  }
-  .sprache button {
-    width: auto;
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    border: 1px solid var(--rand);
-    border-radius: 0.6rem;
-    font: inherit;
-    font-size: 0.9rem;
-  }
-  .sprache button.an {
-    border-color: var(--akzent);
-    color: var(--akzent);
-    font-weight: 600;
   }
   .leer {
     color: var(--leise);

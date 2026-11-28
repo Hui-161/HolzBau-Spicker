@@ -109,6 +109,8 @@ export interface Kontext {
 export interface Rechner {
   id: string
   titel: string
+  /** weitere Ausgabe derselben Funktion mit eigenen Eingaben (2, 3, …) */
+  nummer?: number
   gruppe: string
   kurz: string
   /** Erklärung unter dem Rechner */

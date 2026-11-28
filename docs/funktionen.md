@@ -79,3 +79,9 @@ Alle offenen Punkte, Unklarheiten und ausstehenden Tests stehen in [veroeffentli
 - Datenblatt (PDF oder Foto) lesen: Decklängen als Vorschlag mit Fundstelle, nach Prüfung als eigener Ziegel für den Lattungs-Rechner speicherbar
 - Übertragen werden nur die Frage, die Eingaben abgefragter Rechner und das Datenblatt – keine Projektnamen, Stammdaten oder Notizen (im Browser-Test geprüft)
 
+## Bedienung
+
+- Zahnrad oben rechts öffnet die Einstellungen: Darstellung (wie das Gerät, hell, dunkel), Längeneinheit, Sprache, Funktion zweimal nutzen (weitere Ausgabe mit eigenen Eingaben, z. B. „Sparren 2“, Kennung `sparren~2`), Startseite bearbeiten (Abschnitte verschieben, Funktionen ausblenden, KI-Kachel), App installieren, alle Eingaben zurücksetzen (Projekte, Notizen, Dokumente und Fotos bleiben).
+- Im Telefon-Browser erscheint oben ein Hinweis zum Installieren auf dem Startbildschirm (Chrome/Edge/Samsung mit Installieren-Knopf, iPhone/iPad mit Anleitung über „Teilen“); wegklickbar, in den Einstellungen wieder einschaltbar.
+- Menüleiste unten: zuletzt benutzte Funktion links; lange drücken oder Rechtsklick löst eine Funktion aus der Leiste (mit „Rückgängig“).
+

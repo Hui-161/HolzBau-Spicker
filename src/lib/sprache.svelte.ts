@@ -1,3 +1,4 @@
+import type { Rechner } from '../calcs/types'
 import { EN } from './en'
 import { zustand } from './zustand.svelte'
 
@@ -22,3 +23,6 @@ export const tSkizze = (svg: string): string => svg.replace(/(<text[^>]*>)([^<]+
 
 // für die Vollständigkeitsprüfung der Übersetzung im Browsertest
 ;(globalThis as Record<string, unknown>).__fehlend = fehlend
+
+/** Titel einer Funktion, bei weiteren Ausgaben mit Nummer („Sparren 2“) */
+export const titelVon = (r: Pick<Rechner, 'titel' | 'nummer'>): string => t(r.titel) + (r.nummer ? ` ${r.nummer}` : '')
