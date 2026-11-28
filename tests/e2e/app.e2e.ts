@@ -501,6 +501,25 @@ test('Menüleiste springt zwischen Funktionen, Laufmaß wechselt die Seite', asy
   await expect(page.locator('h1')).toHaveText('Sparren')
   await page.getByRole('button', { name: 'Rückgängig' }).click()
   await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
+  // in der Leiste nach links ziehen sortiert um; danach bleibt die eigene Reihenfolge stehen
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await expect(ablage).toBeVisible()
+  const sparrenBox = (await menue.getByRole('link', { name: 'Sparren', exact: true }).boundingBox())!
+  await page.mouse.move(sparrenBox.x + 5, box.y + box.height / 2, { steps: 10 })
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparreneinteilung', 'Sparren'])
+  await page.mouse.up()
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparreneinteilung', 'Sparren'])
+  await expect(page.locator('h1')).toHaveText('Sparren')
+  await menue.getByRole('link', { name: 'Sparren', exact: true }).click()
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparreneinteilung', 'Sparren'])
+  // zurück zur Reihenfolge nach letzter Nutzung für den Rest des Tests
+  await page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('holzbau.v1')!)
+    localStorage.setItem('holzbau.v1', JSON.stringify({ ...d, leisteEigen: false, zuletzt: ['Sparren'.toLowerCase(), 'sparreneinteilung'] }))
+  })
+  await page.reload()
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
   // Rechtsklick hebt sie ebenfalls; „Entfernen“ anklicken
   await einteilung.click({ button: 'right' })
   await ablage.click()

@@ -130,7 +130,12 @@
 
 <section>
   <h2>{t('Menüleiste unten')}</h2>
-  <p class="leise">{t('Die zuletzt benutzte Funktion steht links. Gedrückt halten hebt eine Funktion aus der Leiste; auf das Feld „Entfernen“ darüber ziehen und loslassen. Am Rechner: Rechtsklick, dann „Entfernen“ anklicken.')}</p>
+  <div class="wahl" role="group" aria-label={t('Reihenfolge der Menüleiste')}>
+    {#each [[false, 'zuletzt benutzte links'], [true, 'eigene Reihenfolge']] as const as [eigen, name] (name)}
+      <button class:an={zustand.leisteEigen === eigen} aria-pressed={zustand.leisteEigen === eigen} onclick={() => ((zustand.leisteEigen = eigen), speichere())}>{t(name)}</button>
+    {/each}
+  </div>
+  <p class="leise">{t('Gedrückt halten hebt eine Funktion aus der Leiste. In der Leiste verschieben sortiert um – danach gilt die eigene Reihenfolge. Auf das Feld „Entfernen“ darüber ziehen und loslassen entfernt sie. Am Rechner: Maustaste gedrückt halten und ziehen, oder Rechtsklick und „Entfernen“ anklicken.')}</p>
 </section>
 
 <section>

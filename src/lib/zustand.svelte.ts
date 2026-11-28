@@ -38,6 +38,8 @@ interface Gespeichert {
   thema: Thema
   /** zuletzt benutzte Funktionen, die zuletzt benutzte vorn – für die Menüleiste */
   zuletzt: string[]
+  /** Menüleiste in eigener Reihenfolge (per Ziehen sortiert) statt „zuletzt benutzte links“ */
+  leisteEigen: boolean
   /** auf der Startseite ausgeblendete Funktionen (die Suche findet sie weiterhin) */
   ausgeblendet: string[]
   /** Reihenfolge der Abschnitte auf der Startseite */
@@ -118,6 +120,7 @@ function pruefeStand(d: Record<string, unknown>): Gespeichert {
     kiKachel: d.kiKachel !== false,
     kopien: woerter(d.kopien, 30).filter((x) => /^[a-z0-9-]+~[2-9]$/i.test(x)),
     installWeg: d.installWeg === true,
+    leisteEigen: d.leisteEigen === true,
     projekte,
     aktiv: projekte.some((p) => p.id === d.aktiv) ? (d.aktiv as string) : projekte[0].id,
     ziegel: (Array.isArray(d.ziegel) ? d.ziegel : []).filter(istZiegel).slice(0, 100).map((z) => ({ id: z.id, name: z.name.slice(0, 80), min: z.min, max: z.max })),

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte'
+  import { flip } from 'svelte/animate'
   import { rechnerNachId } from './calcs'
   import { VORLAGEN } from './core/dokumente'
   import Assistent from './lib/Assistent.svelte'
@@ -39,14 +40,20 @@
     const id = aktiv?.id
     if (!id) return
     untrack(() => {
-      if (zustand.zuletzt[0] === id) return
-      zustand.zuletzt = [id, ...zustand.zuletzt.filter((x) => x !== id)].slice(0, 12)
+      const liste = zustand.zuletzt
+      if (zustand.leisteEigen) {
+        // eigene Reihenfolge: was schon in der Leiste steht, bleibt an seinem Platz; Neues kommt
+        // auf den letzten Platz rechts (bei voller Leiste ersetzt es den bisherigen letzten)
+        if (liste.includes(id)) return
+        zustand.zuletzt = [...(liste.length >= 12 ? liste.slice(0, 11) : liste), id]
+      } else {
+        if (liste[0] === id) return
+        zustand.zuletzt = [id, ...liste.filter((x) => x !== id)].slice(0, 12)
+      }
       sichere()
     })
   })
 
-  /** Menüleiste: zuletzt benutzte Funktionen, die zuletzt benutzte links */
-  const schnell = $derived(zustand.zuletzt.map(rechnerNachId).filter((r) => !!r))
 
   /* Lange drücken (Finger) oder Rechtsklick löst eine Funktion aus der Leiste – mit „Rückgängig“ */
   let geloest = $state<{ name: string; vorher: string[] } | null>(null)
@@ -83,10 +90,15 @@
     breite: number
     /** per Rechtsklick gehoben: kein Ziehen, „Entfernen“ wird angeklickt */
     klick: boolean
+    /** Vorschau der Reihenfolge, während die Funktion über der Leiste gezogen wird */
+    reihe: string[]
   }
   let zug = $state<Zug | null>(null)
   let ueberAblage = $state(false)
   let ablage = $state<HTMLElement>()
+  /** Menüleiste: zuletzt benutzte Funktionen (bzw. eigene Reihenfolge); beim Ziehen die Vorschau der neuen Reihenfolge */
+  const schnell = $derived((zug?.reihe ?? zustand.zuletzt).map(rechnerNachId).filter((r) => !!r))
+  let leiste = $state<HTMLElement>()
   let druckUhr: ReturnType<typeof setTimeout> | undefined
   let druck: { x: number; y: number; art: string } = { x: 0, y: 0, art: '' }
   let gehobenGerade = false
@@ -95,7 +107,8 @@
     const r = rechnerNachId(id)
     if (!r) return
     const rechteck = el.getBoundingClientRect()
-    zug = { id, name: titelVon(r), x, y, dx: x - rechteck.left, dy: y - rechteck.top, breite: rechteck.width, klick }
+    zug = { id, name: titelVon(r), x, y, dx: x - rechteck.left, dy: y - rechteck.top, breite: rechteck.width, klick, reihe: [...zustand.zuletzt] }
+    if (!klick) rolle()
     ueberAblage = false
     gehobenGerade = true
     navigator.vibrate?.(25)
@@ -120,6 +133,22 @@
     // großzügig: auch knapp neben dem Feld zählt
     return !!r && x >= r.left - 12 && x <= r.right + 12 && y >= r.top - 24 && y <= r.bottom + 12
   }
+  /** Zeiger auf Höhe der Leiste (etwas darüber zählt mit) */
+  const inLeiste = (y: number): boolean => !!leiste && y >= leiste.getBoundingClientRect().top - 28
+  const gleich = (a: string[], b: string[]): boolean => a.length === b.length && a.every((x, i) => x === b[i])
+
+  /** Neue Stelle in der Leiste: so viele andere Funktionen, wie links vom Zeiger ihre Mitte haben */
+  function sortiere(x: number) {
+    if (!zug || !leiste) return
+    const andere = [...leiste.querySelectorAll<HTMLElement>('a[data-id]')].filter((a) => a.dataset.id !== zug?.id)
+    const stelle = andere.filter((a) => {
+      const r = a.getBoundingClientRect()
+      return r.left + r.width / 2 < x
+    }).length
+    const ids = andere.map((a) => a.dataset.id as string)
+    const neu = [...ids.slice(0, stelle), zug.id, ...ids.slice(stelle)]
+    if (!gleich(neu, zug.reihe)) zug.reihe = neu
+  }
   function zeigerBewegt(e: PointerEvent) {
     if (!zug || zug.klick) return
     zug.x = e.clientX
@@ -127,11 +156,36 @@
     const vorher = ueberAblage
     ueberAblage = istUeberAblage(e.clientX, e.clientY)
     if (ueberAblage && !vorher) navigator.vibrate?.(10)
+    if (!ueberAblage && inLeiste(e.clientY)) sortiere(e.clientX)
+    // weder Leiste noch „Entfernen“: Vorschau zurück auf die alte Reihenfolge
+    else if (!gleich(zug.reihe, zustand.zuletzt)) zug.reihe = [...zustand.zuletzt]
   }
-  function zeigerLos() {
+  /** am Rand der Leiste mitrollen, damit man auch zu verdeckten Plätzen ziehen kann */
+  function rolle() {
+    const schritt = () => {
+      if (!zug || zug.klick || !leiste) return
+      const r = leiste.getBoundingClientRect()
+      if (inLeiste(zug.y) && !ueberAblage) {
+        const um = zug.x < r.left + 36 ? -8 : zug.x > r.right - 36 ? 8 : 0
+        if (um) {
+          leiste.scrollLeft += um
+          sortiere(zug.x)
+        }
+      }
+      requestAnimationFrame(schritt)
+    }
+    requestAnimationFrame(schritt)
+  }
+  function zeigerLos(e: PointerEvent) {
     clearTimeout(druckUhr)
     if (!zug || zug.klick) return
     if (ueberAblage) loese(zug.id)
+    else if (inLeiste(e.clientY) && !gleich(zug.reihe, zustand.zuletzt)) {
+      // einmal selbst sortiert: ab jetzt gilt die eigene Reihenfolge
+      zustand.zuletzt = zug.reihe
+      zustand.leisteEigen = true
+      sichere()
+    }
     zug = null
     ueberAblage = false
   }
@@ -242,15 +296,17 @@
 
 <nav class="menue nicht-drucken" aria-label={t('Schnellzugriff')}>
   <a class="fest" class:an={!titel} href="#/" aria-current={!titel ? 'page' : undefined}>{t('Start')}</a>
-  <div class="schnell">
+  <div class="schnell" bind:this={leiste}>
     {#each schnell as r (r.id)}
       <a
         class:an={aktiv?.id === r.id}
         class:gehoben={zug?.id === r.id}
+        data-id={r.id}
+        animate:flip={{ duration: 160 }}
         draggable="false"
         href={`#/${r.id}`}
         aria-current={aktiv?.id === r.id ? 'page' : undefined}
-        title={t('Gedrückt halten und auf „Entfernen“ ziehen, oder Rechtsklick')}
+        title={t('Gedrückt halten und ziehen: umsortieren oder auf „Entfernen“; am Rechner auch Rechtsklick')}
         oncontextmenu={(e) => kontext(e, r.id)}
         onpointerdown={(e) => druckBeginn(e, r.id)}
         onpointermove={druckBewegt}
@@ -278,7 +334,7 @@
     >
     <span>
       <strong>{t('Entfernen')}</strong>
-      <small>{zug.klick ? t('Zum Entfernen hier tippen – daneben tippen bricht ab') : t('Hierher ziehen und loslassen')}</small>
+      <small>{zug.klick ? t('Zum Entfernen hier tippen – daneben tippen bricht ab') : t('Hierher ziehen und loslassen – in der Leiste umsortieren')}</small>
     </span>
   </button>
   <div class="schwebend nicht-drucken" class:klick={zug.klick} style:left={`${zug.x - zug.dx}px`} style:top={`${zug.y - zug.dy}px`} style:min-width={`${zug.breite}px`} aria-hidden="true">
