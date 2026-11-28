@@ -477,12 +477,35 @@ test('Menüleiste springt zwischen Funktionen, Laufmaß wechselt die Seite', asy
   await menue.getByRole('link', { name: 'Sparren', exact: true }).click()
   await expect(page.locator('h1')).toHaveText('Sparren')
   await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
-  // Rechtsklick löst aus der Leiste, „Rückgängig“ holt zurück
-  await menue.getByRole('link', { name: 'Sparreneinteilung' }).click({ button: 'right' })
+  // gedrückt halten hebt die Funktion; daneben loslassen lässt sie stehen …
+  const einteilung = menue.getByRole('link', { name: 'Sparreneinteilung' })
+  const box = (await einteilung.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  const ablage = page.getByRole('button', { name: /aus der Leiste entfernen/ })
+  await expect(ablage).toBeVisible()
+  await page.mouse.move(box.x + box.width / 2, box.y - 300, { steps: 5 })
+  await page.mouse.up()
+  await expect(ablage).toHaveCount(0)
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
+  await expect(page.locator('h1')).toHaveText('Sparren')
+  // … auf „Entfernen“ gezogen und losgelassen löst sie aus der Leiste
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await expect(ablage).toBeVisible()
+  const ziel = (await ablage.boundingBox())!
+  await page.mouse.move(ziel.x + ziel.width / 2, ziel.y + ziel.height / 2, { steps: 8 })
+  await expect(ablage).toHaveClass(/drueber/)
+  await page.mouse.up()
   await expect(menue.locator('.schnell a')).toHaveText(['Sparren'])
   await expect(page.locator('h1')).toHaveText('Sparren')
   await page.getByRole('button', { name: 'Rückgängig' }).click()
   await expect(menue.locator('.schnell a')).toHaveText(['Sparren', 'Sparreneinteilung'])
+  // Rechtsklick hebt sie ebenfalls; „Entfernen“ anklicken
+  await einteilung.click({ button: 'right' })
+  await ablage.click()
+  await expect(menue.locator('.schnell a')).toHaveText(['Sparren'])
+  await page.getByRole('button', { name: 'Rückgängig' }).click()
   await menue.getByRole('link', { name: 'Start' }).click()
   await expect(page.locator('h1')).toHaveText('Holzbau-Spicker')
 

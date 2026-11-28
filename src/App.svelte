@@ -66,37 +66,110 @@
     sichere()
     geloest = null
   }
-  // eigener Zeitgeber für Touch: Safari auf dem iPhone meldet langes Drücken nicht als Kontextmenü
+  /*
+   * Lösen wie auf dem Startbildschirm des Telefons: gedrückt halten hebt die Funktion aus der Leiste,
+   * sie folgt dem Finger; über dem Feld „Entfernen“ loslassen entfernt sie, anderswo springt sie zurück.
+   * Am Rechner: Maustaste gedrückt halten und ziehen, oder Rechtsklick und dann „Entfernen“ anklicken.
+   */
+  interface Zug {
+    id: string
+    name: string
+    /** Zeigerposition */
+    x: number
+    y: number
+    /** Abstand des Zeigers zur linken oberen Ecke des Knopfs und dessen Größe */
+    dx: number
+    dy: number
+    breite: number
+    /** per Rechtsklick gehoben: kein Ziehen, „Entfernen“ wird angeklickt */
+    klick: boolean
+  }
+  let zug = $state<Zug | null>(null)
+  let ueberAblage = $state(false)
+  let ablage = $state<HTMLElement>()
   let druckUhr: ReturnType<typeof setTimeout> | undefined
-  let druckStart: [number, number] = [0, 0]
-  let langGedrueckt = false
+  let druck: { x: number; y: number; art: string } = { x: 0, y: 0, art: '' }
+  let gehobenGerade = false
+
+  function hebe(id: string, el: HTMLElement, x: number, y: number, klick: boolean) {
+    const r = rechnerNachId(id)
+    if (!r) return
+    const rechteck = el.getBoundingClientRect()
+    zug = { id, name: titelVon(r), x, y, dx: x - rechteck.left, dy: y - rechteck.top, breite: rechteck.width, klick }
+    ueberAblage = false
+    gehobenGerade = true
+    navigator.vibrate?.(25)
+  }
   function druckBeginn(e: PointerEvent, id: string) {
-    langGedrueckt = false
-    if (e.pointerType !== 'touch') return
-    druckStart = [e.clientX, e.clientY]
+    gehobenGerade = false
+    if (e.button !== 0) return
+    druck = { x: e.clientX, y: e.clientY, art: e.pointerType }
+    const el = e.currentTarget as HTMLElement
     clearTimeout(druckUhr)
-    druckUhr = setTimeout(() => {
-      langGedrueckt = true
-      navigator.vibrate?.(20)
-      loese(id)
-    }, 550)
+    druckUhr = setTimeout(() => hebe(id, el, druck.x, druck.y, false), 450)
   }
   function druckBewegt(e: PointerEvent) {
+    if (zug) return
     // wer die Leiste wischt, will nicht lösen
-    if (Math.hypot(e.clientX - druckStart[0], e.clientY - druckStart[1]) > 10) clearTimeout(druckUhr)
+    if (Math.hypot(e.clientX - druck.x, e.clientY - druck.y) > 10) clearTimeout(druckUhr)
   }
   const druckEnde = (): void => clearTimeout(druckUhr)
-  function kontext(e: MouseEvent, id: string) {
-    e.preventDefault()
+
+  const istUeberAblage = (x: number, y: number): boolean => {
+    const r = ablage?.getBoundingClientRect()
+    // großzügig: auch knapp neben dem Feld zählt
+    return !!r && x >= r.left - 12 && x <= r.right + 12 && y >= r.top - 24 && y <= r.bottom + 12
+  }
+  function zeigerBewegt(e: PointerEvent) {
+    if (!zug || zug.klick) return
+    zug.x = e.clientX
+    zug.y = e.clientY
+    const vorher = ueberAblage
+    ueberAblage = istUeberAblage(e.clientX, e.clientY)
+    if (ueberAblage && !vorher) navigator.vibrate?.(10)
+  }
+  function zeigerLos() {
     clearTimeout(druckUhr)
-    if (!langGedrueckt) loese(id)
-    langGedrueckt = true
+    if (!zug || zug.klick) return
+    if (ueberAblage) loese(zug.id)
+    zug = null
+    ueberAblage = false
+  }
+  function zeigerAbbruch() {
+    clearTimeout(druckUhr)
+    if (zug && !zug.klick) zug = null
+  }
+  function zeigerUnten(e: PointerEvent) {
+    // per Rechtsklick gehoben: ein Klick daneben bricht ab
+    if (zug?.klick && !ablage?.contains(e.target as Node)) zug = null
+  }
+  function kontext(e: MouseEvent, id: string) {
+    // kein Link-Menü des Browsers; ist die Funktion schon gehoben (Finger), bleibt es dabei
+    e.preventDefault()
+    if (zug) return
+    clearTimeout(druckUhr)
+    const el = e.currentTarget as HTMLElement
+    const r = el.getBoundingClientRect()
+    // Android meldet langes Drücken teils als Kontextmenü, bevor der eigene Zeitgeber abläuft
+    hebe(id, el, druck.art === 'touch' ? druck.x : r.left + r.width / 2, druck.art === 'touch' ? druck.y : r.top + r.height / 2, druck.art !== 'touch')
   }
   function tipp(e: MouseEvent) {
-    // nach dem langen Drücken nicht auch noch öffnen
-    if (langGedrueckt) e.preventDefault()
-    langGedrueckt = false
+    // nach dem Heben nicht auch noch öffnen
+    if (gehobenGerade || zug) e.preventDefault()
+    gehobenGerade = false
   }
+  function ablageGeklickt() {
+    if (zug) loese(zug.id)
+    zug = null
+  }
+  // während des Ziehens darf die Seite nicht mitscrollen (passive: false, sonst wirkt preventDefault nicht)
+  $effect(() => {
+    const halt = (e: TouchEvent): void => {
+      if (zug && !zug.klick) e.preventDefault()
+    }
+    window.addEventListener('touchmove', halt, { passive: false })
+    return () => window.removeEventListener('touchmove', halt)
+  })
 
   // Beim Zurückkehren zur Übersicht wieder dort stehen, wo man sie verlassen hat;
   // jede Funktion beginnt dagegen oben.
@@ -110,7 +183,14 @@
   }
 </script>
 
-<svelte:window onhashchange={wechsle} />
+<svelte:window
+  onhashchange={wechsle}
+  onpointermove={zeigerBewegt}
+  onpointerup={zeigerLos}
+  onpointercancel={zeigerAbbruch}
+  onpointerdown={zeigerUnten}
+  onkeydown={(e) => e.key === 'Escape' && (zug = null)}
+/>
 
 <Installhinweis />
 
@@ -166,9 +246,11 @@
     {#each schnell as r (r.id)}
       <a
         class:an={aktiv?.id === r.id}
+        class:gehoben={zug?.id === r.id}
+        draggable="false"
         href={`#/${r.id}`}
         aria-current={aktiv?.id === r.id ? 'page' : undefined}
-        title={t('Lange drücken oder Rechtsklick: aus der Leiste lösen')}
+        title={t('Gedrückt halten und auf „Entfernen“ ziehen, oder Rechtsklick')}
         oncontextmenu={(e) => kontext(e, r.id)}
         onpointerdown={(e) => druckBeginn(e, r.id)}
         onpointermove={druckBewegt}
@@ -182,6 +264,27 @@
   </div>
   <a class="fest" class:an={projektSeite} href="#/projekte" aria-current={projektSeite ? 'page' : undefined}>{t('Projekt')}</a>
 </nav>
+
+{#if zug}
+  <button
+    class="ablage nicht-drucken"
+    class:drueber={ueberAblage}
+    bind:this={ablage}
+    onclick={ablageGeklickt}
+    aria-label={`${zug.name}: ${t('aus der Leiste entfernen')}`}
+  >
+    <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"
+      ><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 2v8h1.5v-8H10Zm3.5 0v8H15v-8h-1.5Z" /></svg
+    >
+    <span>
+      <strong>{t('Entfernen')}</strong>
+      <small>{zug.klick ? t('Zum Entfernen hier tippen – daneben tippen bricht ab') : t('Hierher ziehen und loslassen')}</small>
+    </span>
+  </button>
+  <div class="schwebend nicht-drucken" class:klick={zug.klick} style:left={`${zug.x - zug.dx}px`} style:top={`${zug.y - zug.dy}px`} style:min-width={`${zug.breite}px`} aria-hidden="true">
+    {zug.name}
+  </div>
+{/if}
 
 {#if geloest}
   <div class="geloest nicht-drucken" role="status">
@@ -238,6 +341,90 @@
   }
   .einstellungen.an {
     background: color-mix(in srgb, var(--kopf-text) 18%, transparent);
+  }
+  /* Feld „Entfernen“ direkt über der Leiste */
+  .ablage {
+    position: fixed;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: calc(3.9rem + env(safe-area-inset-bottom));
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    /* Text links, damit die gezogene Funktion ihn nicht verdeckt */
+    justify-content: flex-start;
+    gap: 0.75rem;
+    min-height: 4.2rem;
+    padding: 0 1.25rem;
+    border: 2px dashed var(--warn);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--flaeche) 92%, var(--warn));
+    color: var(--warn);
+    font: inherit;
+    text-align: left;
+    animation: einblenden 0.16s ease-out;
+    transition:
+      transform 0.12s,
+      background 0.12s;
+  }
+  .ablage span {
+    display: flex;
+    flex-direction: column;
+  }
+  .ablage small {
+    font-size: 0.8rem;
+  }
+  .ablage.drueber {
+    border-style: solid;
+    background: var(--warn);
+    color: var(--flaeche);
+    transform: scale(1.04);
+  }
+  @keyframes einblenden {
+    from {
+      opacity: 0;
+      transform: translateY(1rem);
+    }
+  }
+  /* die gehobene Funktion folgt dem Finger */
+  .schwebend {
+    position: fixed;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--akzent);
+    border-radius: 0.6rem;
+    background: var(--flaeche);
+    color: var(--text);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 0.6rem 1.4rem rgb(0 0 0 / 0.3);
+    transform: scale(1.1) rotate(-2deg);
+    animation: heben 0.18s ease-out;
+  }
+  .schwebend.klick {
+    animation:
+      heben 0.18s ease-out,
+      wackeln 0.5s ease-in-out 0.18s infinite;
+  }
+  @keyframes heben {
+    from {
+      transform: scale(1);
+      box-shadow: none;
+    }
+  }
+  @keyframes wackeln {
+    50% {
+      transform: scale(1.1) rotate(2deg);
+    }
+  }
+  .menue a.gehoben {
+    opacity: 0.25;
+    border-style: dashed;
   }
   .geloest {
     position: fixed;

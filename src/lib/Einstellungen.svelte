@@ -130,7 +130,7 @@
 
 <section>
   <h2>{t('Menüleiste unten')}</h2>
-  <p class="leise">{t('Die zuletzt benutzte Funktion steht links. Lange drücken (am Rechner: Rechtsklick) löst eine Funktion aus der Leiste.')}</p>
+  <p class="leise">{t('Die zuletzt benutzte Funktion steht links. Gedrückt halten hebt eine Funktion aus der Leiste; auf das Feld „Entfernen“ darüber ziehen und loslassen. Am Rechner: Rechtsklick, dann „Entfernen“ anklicken.')}</p>
 </section>
 
 <section>
